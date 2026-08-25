@@ -1,0 +1,40 @@
+# Local secrets
+.env
+.env.*
+!.env.example
+
+# Private ESPN league data
+data/raw/**
+data/processed/**
+data/derived/**
+data/config/managers.yaml
+
+# Keep empty data directories available to Git when placeholders are added later
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+!data/derived/.gitkeep
+
+# Temporary import and snapshot files
+*.tmp
+*.temp
+*.partial
+data/**/tmp/**
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+
+# Streamlit local configuration and secrets
+.streamlit/secrets.toml
+
+# Editors and operating systems
+.DS_Store
+.idea/
+.vscode/
