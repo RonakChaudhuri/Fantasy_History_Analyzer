@@ -7,9 +7,8 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
-from urllib.error import HTTPError
 from unittest.mock import patch
-
+from urllib.error import HTTPError
 
 SCRIPT = Path(__file__).parents[1] / "scripts" / "phase0_espn_audit.py"
 SPEC = importlib.util.spec_from_file_location("phase0_espn_audit", SCRIPT)
@@ -61,7 +60,9 @@ class PhaseZeroAuditTests(unittest.TestCase):
         unauthorized = HTTPError("safe-url", 401, "Unauthorized", {}, None)
         history_payload = {"settings": {"name": "private"}, "teams": [{"id": 1}]}
 
-        with patch.object(audit, "_request_json", side_effect=[unauthorized, history_payload]) as request:
+        with patch.object(
+            audit, "_request_json", side_effect=[unauthorized, history_payload]
+        ) as request:
             payload = audit.fetch_json(config, 2019, ("mSettings",))
 
         self.assertEqual(payload, history_payload)

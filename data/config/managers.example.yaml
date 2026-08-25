@@ -1,0 +1,7 @@
+managers:
+  demo_manager:
+    display_name: "Demo Manager"
+    espn_member_ids:
+      - "{SYNTHETIC-ID}"
+    season_team_ids:
+      2019: 1

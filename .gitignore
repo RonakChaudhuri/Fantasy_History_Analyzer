@@ -10,6 +10,9 @@ data/derived/**
 data/audit/**
 data/config/managers.yaml
 
+# Locally exported or generated private reports
+exports/**
+
 # Keep empty data directories available to Git when placeholders are added later
 !data/raw/.gitkeep
 !data/processed/.gitkeep
@@ -21,10 +24,12 @@ data/config/managers.yaml
 *.temp
 *.partial
 data/**/tmp/**
+data/**/.staging/**
 
 # Python
 __pycache__/
 *.py[cod]
+*.egg-info/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/

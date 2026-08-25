@@ -1,0 +1,26 @@
+{
+  "league_name": "The Sunday Legends Demo League",
+  "notice": "Synthetic demo data — no private ESPN league information is displayed.",
+  "summary": {
+    "seasons": 7,
+    "matchups": 714,
+    "total_points": 182456.72,
+    "latest_champion": "Fourth & Long",
+    "championship_leader": "Goal Line Poets",
+    "best_record": "Sunday Scaries · 58–27"
+  },
+  "records": [
+    {"label": "Highest weekly score", "value": "214.38", "detail": "Goal Line Poets · 2023 Week 8"},
+    {"label": "Closest game", "value": "0.06 pts", "detail": "Fourth & Long over Audible Chaos · 2021 Week 4"},
+    {"label": "Largest blowout", "value": "91.74 pts", "detail": "Sunday Scaries · 2024 Week 11"}
+  ],
+  "champions": [
+    {"season": 2019, "manager": "Goal Line Poets", "points": 151.24},
+    {"season": 2020, "manager": "Sunday Scaries", "points": 164.80},
+    {"season": 2021, "manager": "Goal Line Poets", "points": 173.18},
+    {"season": 2022, "manager": "Audible Chaos", "points": 158.62},
+    {"season": 2023, "manager": "Sunday Scaries", "points": 181.44},
+    {"season": 2024, "manager": "Goal Line Poets", "points": 169.76},
+    {"season": 2025, "manager": "Fourth & Long", "points": 176.32}
+  ]
+}

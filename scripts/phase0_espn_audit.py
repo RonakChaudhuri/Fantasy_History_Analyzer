@@ -22,7 +22,6 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
-
 API_TEMPLATE = (
     "https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/seasons/{season}"
     "/segments/0/leagues/{league_id}"
@@ -58,7 +57,7 @@ class Config:
     espn_swid: str
 
     @classmethod
-    def from_environment(cls) -> "Config":
+    def from_environment(cls) -> Config:
         missing = [name for name in SECRET_NAMES if not os.environ.get(name, "").strip()]
         if missing:
             joined = ", ".join(missing)
@@ -108,7 +107,7 @@ def _request_json(config: Config, season: int, url: str) -> dict[str, Any]:
         },
     )
     try:
-        with urlopen(request, timeout=30) as response:  # noqa: S310 - fixed HTTPS host
+        with urlopen(request, timeout=30) as response:
             payload = json.load(response)
     except HTTPError:
         raise
@@ -158,7 +157,8 @@ def fetch_json(
     except HTTPError as exc:
         if exc.code in (401, 403):
             raise AuditError(
-                f"ESPN rejected access for season {season} (HTTP {exc.code}); refresh local credentials."
+                f"ESPN rejected access for season {season} (HTTP {exc.code}); "
+                "refresh local credentials."
             ) from None
         if exc.code in (400, 404):
             raise SeasonUnavailableError(
@@ -167,7 +167,9 @@ def fetch_json(
         raise AuditError(f"ESPN request failed for season {season} (HTTP {exc.code}).") from None
 
 
-def shape_paths(value: Any, prefix: str = "$", output: dict[str, set[str]] | None = None) -> dict[str, set[str]]:
+def shape_paths(
+    value: Any, prefix: str = "$", output: dict[str, set[str]] | None = None
+) -> dict[str, set[str]]:
     """Describe JSON structure without retaining any scalar response values."""
     output = output if output is not None else {}
     if isinstance(value, Mapping):
@@ -231,7 +233,8 @@ def summarize(payloads: Mapping[str, dict[str, Any]], season: int) -> dict[str, 
     roster_teams = _list(roster_payload.get("teams"))
     scoring_items = _list(scoring.get("scoringItems"))
     reception_items = [
-        item for item in scoring_items
+        item
+        for item in scoring_items
         if isinstance(item, dict) and item.get("statId") == RECEPTION_STAT_ID
     ]
     lineup_counts = roster_settings.get("lineupSlotCounts")
@@ -284,7 +287,9 @@ def summarize(payloads: Mapping[str, dict[str, Any]], season: int) -> dict[str, 
                 contains_key(lineup_payload, "rosterForCurrentScoringPeriod"),
                 coverage["lineup_entries"],
             ),
-            "rosters": availability(contains_key(roster_payload, "roster"), coverage["roster_entries"]),
+            "rosters": availability(
+                contains_key(roster_payload, "roster"), coverage["roster_entries"]
+            ),
         },
         "settings": {
             "scoring_type": scoring.get("scoringType"),
@@ -317,7 +322,9 @@ def discover_latest(config: Config, requested: int | None) -> tuple[int, dict[st
             continue
         if has_league(payload):
             return season, payload
-    raise AuditError("No accessible league season was found from the first season through this year.")
+    raise AuditError(
+        "No accessible league season was found from the first season through this year."
+    )
 
 
 def atomic_json(path: Path, value: Any) -> None:
@@ -343,7 +350,8 @@ def markdown_report(result: Mapping[str, Any]) -> str:
         "",
         "## Coverage matrix",
         "",
-        "| Season | Settings | Members | Teams | Schedule | Playoffs | Draft picks | Lineups | Rosters | PPR |",
+        "| Season | Settings | Members | Teams | Schedule | Playoffs | Draft picks "
+        "| Lineups | Rosters | PPR |",
         "| ---: | :---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | :---: |",
     ]
     for item in seasons:
@@ -351,8 +359,8 @@ def markdown_report(result: Mapping[str, Any]) -> str:
         settings = item["settings"]
         available = item["availability"]
 
-        def cell(area: str, count: int) -> str:
-            return "unavailable" if available[area] == "unavailable" else str(count)
+        def cell(area: str, count: int, availability: dict[str, str] = available) -> str:
+            return "unavailable" if availability[area] == "unavailable" else str(count)
 
         lines.append(
             f"| {item['season']} | {'yes' if coverage['settings'] else 'unavailable'} | "
@@ -373,7 +381,8 @@ def markdown_report(result: Mapping[str, Any]) -> str:
     lines.extend(["", "## Lineup settings", ""])
     for item in seasons:
         lines.append(
-            f"- {item['season']}: `{json.dumps(item['settings']['lineup_slot_counts'], sort_keys=True)}`"
+            f"- {item['season']}: "
+            f"`{json.dumps(item['settings']['lineup_slot_counts'], sort_keys=True)}`"
         )
     lines.append("")
     return "\n".join(lines)
