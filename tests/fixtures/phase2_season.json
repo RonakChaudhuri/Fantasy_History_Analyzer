@@ -1,0 +1,135 @@
+{
+  "league": {
+    "id": 999,
+    "seasonId": 2019,
+    "members": [
+      {
+        "displayName": "Synthetic Manager A",
+        "id": "member-a",
+        "isLeagueManager": true,
+        "notificationSettings": [{"type": "PRIVATE"}]
+      },
+      {
+        "displayName": "Synthetic Manager B",
+        "id": "member-b"
+      }
+    ],
+    "settings": {
+      "name": "Synthetic Trace League",
+      "rosterSettings": {"lineupSlotCounts": {"0": 1, "20": 7}},
+      "scheduleSettings": {"matchupPeriodCount": 2, "playoffTeamCount": 2},
+      "scoringSettings": {"scoringType": "H2H_POINTS"}
+    },
+    "status": {"currentScoringPeriod": 2, "isGameOver": true},
+    "teams": [
+      {
+        "abbrev": "SYN",
+        "id": 1,
+        "location": "Synthetic",
+        "nickname": "Alpha",
+        "owners": ["member-a"],
+        "primaryOwner": "member-a"
+      },
+      {
+        "abbrev": "FIX",
+        "id": 2,
+        "location": "Fixture",
+        "nickname": "Beta",
+        "owners": ["member-b"],
+        "primaryOwner": "member-b"
+      }
+    ]
+  },
+  "schedule": {
+    "schedule": [
+      {
+        "away": {"pointsByScoringPeriod": {"1": 100.0}, "teamId": 2, "totalPoints": 100.0},
+        "home": {"pointsByScoringPeriod": {"1": 100.0}, "teamId": 1, "totalPoints": 100.0},
+        "id": 10,
+        "matchupPeriodId": 1,
+        "playoffTierType": "NONE",
+        "winner": "TIE"
+      },
+      {
+        "home": {
+          "pointsByScoringPeriod": {"2": 88.5, "3": 91.0},
+          "teamId": 1,
+          "totalPoints": 179.5
+        },
+        "id": 11,
+        "matchupPeriodId": 2,
+        "playoffTierType": "WINNERS_BRACKET",
+        "winner": "HOME"
+      }
+    ]
+  },
+  "draft": {
+    "draftDetail": {
+      "completeDate": 1566000000000,
+      "drafted": true,
+      "inProgress": false,
+      "picks": [
+        {
+          "id": 1,
+          "memberId": "member-a",
+          "overallPickNumber": 1,
+          "playerId": 101,
+          "playerName": "Synthetic Player",
+          "roundId": 1,
+          "roundPickNumber": 1,
+          "teamId": 1
+        }
+      ]
+    }
+  },
+  "rosters": {
+    "teams": [
+      {
+        "id": 1,
+        "roster": {
+          "entries": [
+            {
+              "lineupSlotId": 0,
+              "playerPoolEntry": {
+                "acquisitionDate": 1566000000000,
+                "acquisitionType": "DRAFT",
+                "player": {
+                  "defaultPositionId": 1,
+                  "fullName": "Synthetic Player",
+                  "id": 101,
+                  "proTeamId": 1
+                }
+              }
+            }
+          ]
+        }
+      },
+      {"id": 2, "roster": {"entries": []}}
+    ]
+  },
+  "lineups_1": {
+    "schedule": [
+      {
+        "away": {"teamId": 2},
+        "home": {
+          "rosterForCurrentScoringPeriod": {
+            "entries": [
+              {
+                "lineupSlotId": 0,
+                "playerPoolEntry": {
+                  "player": {
+                    "defaultPositionId": 1,
+                    "fullName": "Synthetic Player",
+                    "id": 101,
+                    "proTeamId": 1
+                  }
+                }
+              }
+            ]
+          },
+          "teamId": 1
+        }
+      }
+    ]
+  }
+}

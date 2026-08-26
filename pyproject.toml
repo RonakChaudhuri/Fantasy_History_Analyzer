@@ -54,5 +54,5 @@ warn_redundant_casts = true
 warn_unused_ignores = true
 
 [[tool.mypy.overrides]]
-module = ["pandas", "pandas.*", "plotly", "plotly.*"]
+module = ["pandas", "pandas.*", "plotly", "plotly.*", "pyarrow", "pyarrow.*"]
 ignore_missing_imports = true
