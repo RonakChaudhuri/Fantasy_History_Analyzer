@@ -12,6 +12,10 @@ class ResponseValidationError(RuntimeError):
     """Raised when ESPN returns a shape that is unsafe to promote."""
 
 
+class IdentityValidationError(RuntimeError):
+    """Raised when a canonical manager mapping is unsafe to promote."""
+
+
 class CoverageStatus(StrEnum):
     """Availability states retained instead of coercing missing data to zero."""
 

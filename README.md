@@ -48,6 +48,19 @@ python scripts/rebuild_processed.py
 python scripts/validate_data.py
 ```
 
+## Reconcile canonical managers
+
+Generate an ignored suggestion file for review, then edit the ignored canonical mapping manually. Suggestions are evidence only and are never applied automatically.
+
+```bash
+python scripts/validate_identities.py --write-suggestions data/config/managers.suggestions.yaml
+cp data/config/managers.example.yaml data/config/managers.yaml
+# Review and edit data/config/managers.yaml locally.
+python scripts/validate_identities.py --require-complete
+```
+
+The YAML supports stable member identifiers, explicit season/team overrides, aliases, co-owners, and ownership transfers. A valid rebuild writes source-traceable Parquet files under `data/derived/identities/` atomically; conflicts or required-completeness failures preserve the prior valid output.
+
 Private snapshots, manifests, processed tables, staging data, and the canonical manager mapping remain ignored by Git. A failed fetch, validation, write, normalization, or promotion leaves the previous valid raw and processed dataset in place.
 
 ## Verify
@@ -70,7 +83,9 @@ ruff format .
 - Phase 0 ESPN feasibility is complete; see `docs/PHASE_0_FINDINGS.md`.
 - Phase 1 uses synthetic data for the UI and establishes module boundaries, configuration safety, and the overview shell.
 - Phase 2 implements explicit ESPN importing, validated/manifested JSON snapshots, deterministic Parquet normalization, offline rebuilding, and integrity validation.
-- Phase 3 identity-reconciliation guidance is in [`docs/PHASE_3_HANDOFF.md`](docs/PHASE_3_HANDOFF.md); analytics and production pages remain later phases.
+- Phase 3 manager reconciliation is implemented as a local, explicit YAML workflow; analytics and production pages remain later phases.
+- Phase 3 implementation and its remaining private review gate are documented in [`docs/PHASE_3_STATUS.md`](docs/PHASE_3_STATUS.md).
+- Phase 4 analytics guidance is prepared in [`docs/PHASE_4_HANDOFF.md`](docs/PHASE_4_HANDOFF.md), but its Phase 3 identity gate must pass before implementation begins.
 - The MVP remains Python, Streamlit, pandas, Plotly, Parquet, YAML, and local files—no database or custom login.
 
 See `DEVELOPMENT_PLAN.md` for the approved scope, architecture, phases, security requirements, and acceptance tests.

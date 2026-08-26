@@ -1,3 +1,4 @@
+mapping_version: 1
 managers:
   demo_manager:
     display_name: "Demo Manager"
@@ -5,3 +6,20 @@ managers:
       - "{SYNTHETIC-ID}"
     season_team_ids:
       2019: 1
+      2020: 3
+    aliases:
+      - "Demo Renamed Team"
+    explicit_assignments:
+      - season: 2021
+        source_team_id: 7
+        assignment_type: co_owner
+  demo_co_owner:
+    display_name: "Demo Co-owner"
+    espn_member_ids:
+      - "{SYNTHETIC-COOWNER-ID}"
+    season_team_ids: {}
+    aliases: []
+    explicit_assignments:
+      - season: 2021
+        source_team_id: 7
+        assignment_type: co_owner

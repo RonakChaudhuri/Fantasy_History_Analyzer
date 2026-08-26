@@ -9,6 +9,7 @@ data/processed/**
 data/derived/**
 data/audit/**
 data/config/managers.yaml
+data/config/managers.suggestions.yaml
 
 # Locally exported or generated private reports
 exports/**
