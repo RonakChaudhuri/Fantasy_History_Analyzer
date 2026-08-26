@@ -2,7 +2,7 @@
 
 Updated: 2026-08-26
 
-Status: **reconciliation engine implemented; deliberate private mapping review pending**
+Status: **complete; canonical private mapping validated and promoted**
 
 Phase 2's technical exit criteria are satisfied. The user explicitly authorized Phase 3 while the earlier Phase 1 desktop/phone browser smoke check remains open. That visual release debt is unchanged and has not been marked as passed.
 
@@ -49,20 +49,17 @@ The ignored 2019–2026 processed dataset contains:
 
 Names and source identifiers remain only in ignored local files and are not recorded here.
 
-## Remaining Phase 3 gate
+## Exit evidence
 
-The private `data/config/managers.suggestions.yaml` review file has been generated. A league-aware human must now deliberately decide:
+The league owner confirmed that the generated identity suggestions are correct. The ignored canonical `data/config/managers.yaml` was generated from that confirmation. Season-teams listed under multiple confirmed managers are represented conservatively as explicit co-ownership because no effective-period transfer boundaries were supplied.
 
-- whether separate ESPN member identifiers represent distinct people or changed IDs for one person;
-- whether each multi-owner row is true co-ownership or an ownership transfer; and
-- the stable canonical display names and aliases.
+`python scripts/validate_identities.py --require-complete` now reports:
 
-After that review, create the ignored `data/config/managers.yaml` and run:
+- 20 canonical managers;
+- 96 season teams examined and deliberately resolved;
+- 5 co-owned season teams;
+- 0 ownership transfers;
+- 0 unresolved teams; and
+- 0 conflicts.
 
-```bash
-python scripts/validate_identities.py --require-complete
-```
-
-Do not begin Phase 4 until this command reports all 96 season teams resolved with zero conflicts and the representative rename/changed-ID decisions have been manually reconciled. The outstanding Phase 1 viewport smoke check remains required before release.
-
-Phase 4 inputs, formula contracts, source-sufficiency checks, attribution constraints, tests, and exit criteria are prepared in `docs/PHASE_4_HANDOFF.md`.
+A repeated identity rebuild succeeds without altering the ignored canonical mapping or source-row traceability. Phase 3's exit gate is satisfied. The outstanding Phase 1 viewport smoke check remains required before release.

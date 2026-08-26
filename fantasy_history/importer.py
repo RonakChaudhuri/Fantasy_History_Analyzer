@@ -361,7 +361,10 @@ def build_processed(snapshot_dirs: Sequence[Path], *, output_root: Path) -> dict
         manifest, payloads = load_season_snapshot(snapshot_dir)
         normalized.append(
             normalize_season(
-                league_id=manifest.league_id, season=manifest.season, payloads=payloads
+                league_id=manifest.league_id,
+                season=manifest.season,
+                payloads=payloads,
+                is_active=manifest.coverage["schedule"].status == "partial",
             )
         )
     frames = combine_tables(normalized)

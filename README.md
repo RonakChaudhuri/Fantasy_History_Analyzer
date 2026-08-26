@@ -61,6 +61,16 @@ python scripts/validate_identities.py --require-complete
 
 The YAML supports stable member identifiers, explicit season/team overrides, aliases, co-owners, and ownership transfers. A valid rebuild writes source-traceable Parquet files under `data/derived/identities/` atomically; conflicts or required-completeness failures preserve the prior valid output.
 
+## Rebuild analytics
+
+After identity validation passes with `--require-complete`, build the versioned analytics bundle without contacting ESPN:
+
+```bash
+python scripts/rebuild_analytics.py
+```
+
+The command calculates segmented standings, official finishes, expected wins and luck, manager careers, head-to-head totals, streaks, and traceable records. Formula, processed-source, identity, and attribution-policy checksums invalidate stale output. A failed build preserves the previous valid bundle.
+
 Private snapshots, manifests, processed tables, staging data, and the canonical manager mapping remain ignored by Git. A failed fetch, validation, write, normalization, or promotion leaves the previous valid raw and processed dataset in place.
 
 ## Verify
@@ -83,9 +93,10 @@ ruff format .
 - Phase 0 ESPN feasibility is complete; see `docs/PHASE_0_FINDINGS.md`.
 - Phase 1 uses synthetic data for the UI and establishes module boundaries, configuration safety, and the overview shell.
 - Phase 2 implements explicit ESPN importing, validated/manifested JSON snapshots, deterministic Parquet normalization, offline rebuilding, and integrity validation.
-- Phase 3 manager reconciliation is implemented as a local, explicit YAML workflow; analytics and production pages remain later phases.
-- Phase 3 implementation and its remaining private review gate are documented in [`docs/PHASE_3_STATUS.md`](docs/PHASE_3_STATUS.md).
-- Phase 4 analytics guidance is prepared in [`docs/PHASE_4_HANDOFF.md`](docs/PHASE_4_HANDOFF.md), but its Phase 3 identity gate must pass before implementation begins.
+- Phase 3 manager reconciliation is complete; the confirmed private mapping resolves every season-team and remains ignored by Git.
+- Phase 3 implementation and exit evidence are documented in [`docs/PHASE_3_STATUS.md`](docs/PHASE_3_STATUS.md).
+- Phase 4 is complete: the real local analytics bundle is promoted, reconciled, source-traceable, and versioned. Exit evidence is documented in [`docs/PHASE_4_STATUS.md`](docs/PHASE_4_STATUS.md).
+- Phase 5 inputs, page contracts, readiness behavior, accessibility requirements, tests, and exit criteria are prepared in [`docs/PHASE_5_HANDOFF.md`](docs/PHASE_5_HANDOFF.md).
 - The MVP remains Python, Streamlit, pandas, Plotly, Parquet, YAML, and local files—no database or custom login.
 
 See `DEVELOPMENT_PLAN.md` for the approved scope, architecture, phases, security requirements, and acceptance tests.

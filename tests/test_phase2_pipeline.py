@@ -37,6 +37,10 @@ def test_normalization_preserves_ties_byes_playoffs_and_source_traceability() ->
     assert frames["team_scores"]["result"].iloc[2:].isna().all()
     assert len(frames["playoff_results"]) == 1
     assert frames["draft_picks"].iloc[0]["source_member_id"] == "member-a"
+    assert frames["season_teams"]["playoff_seed"].tolist() == [1, 2]
+    assert frames["season_teams"]["calculated_final_rank"].tolist() == [1, 2]
+    assert frames["season_teams"]["final_rank"].isna().all()
+    assert frames["season_teams"]["official_ties"].tolist() == [1, 1]
     for frame in frames.values():
         assert (
             list(frame.columns)

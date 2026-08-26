@@ -28,7 +28,19 @@
         "location": "Synthetic",
         "nickname": "Alpha",
         "owners": ["member-a"],
-        "primaryOwner": "member-a"
+        "playoffSeed": 1,
+        "primaryOwner": "member-a",
+        "rankCalculatedFinal": 1,
+        "rankFinal": 0,
+        "record": {
+          "overall": {
+            "losses": 0,
+            "pointsAgainst": 100.0,
+            "pointsFor": 100.0,
+            "ties": 1,
+            "wins": 0
+          }
+        }
       },
       {
         "abbrev": "FIX",
@@ -36,7 +48,19 @@
         "location": "Fixture",
         "nickname": "Beta",
         "owners": ["member-b"],
-        "primaryOwner": "member-b"
+        "playoffSeed": 2,
+        "primaryOwner": "member-b",
+        "rankCalculatedFinal": 2,
+        "rankFinal": 0,
+        "record": {
+          "overall": {
+            "losses": 0,
+            "pointsAgainst": 100.0,
+            "pointsFor": 100.0,
+            "ties": 1,
+            "wins": 0
+          }
+        }
       }
     ]
   },

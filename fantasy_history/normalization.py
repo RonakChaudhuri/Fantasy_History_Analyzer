@@ -11,7 +11,7 @@ import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-NORMALIZATION_VERSION = "phase2.v1"
+NORMALIZATION_VERSION = "phase2.v2"
 
 STRING = pa.string()
 INT = pa.int64()
@@ -28,6 +28,8 @@ TABLE_SCHEMAS: dict[str, pa.Schema] = {
             ("regular_season_periods", INT),
             ("playoff_team_count", INT),
             ("current_scoring_period", INT),
+            ("current_matchup_period", INT),
+            ("final_scoring_period", INT),
             ("is_active", BOOL),
             ("lineup_slot_counts_json", STRING),
             ("normalization_version", STRING),
@@ -59,6 +61,14 @@ TABLE_SCHEMAS: dict[str, pa.Schema] = {
             ("primary_owner_id", STRING),
             ("owner_ids_json", STRING),
             ("division_id", INT),
+            ("playoff_seed", INT),
+            ("final_rank", INT),
+            ("calculated_final_rank", INT),
+            ("official_wins", INT),
+            ("official_losses", INT),
+            ("official_ties", INT),
+            ("official_points_for", FLOAT),
+            ("official_points_against", FLOAT),
             ("logo_url", STRING),
             ("source_file", STRING),
             ("source_row_key", STRING),
@@ -206,6 +216,11 @@ def _int(value: Any) -> int | None:
     return int(value) if isinstance(value, (int, float)) and not isinstance(value, bool) else None
 
 
+def _positive_int(value: Any) -> int | None:
+    parsed = _int(value)
+    return parsed if parsed is not None and parsed > 0 else None
+
+
 def _float(value: Any) -> float | None:
     return float(value) if isinstance(value, (int, float)) and not isinstance(value, bool) else None
 
@@ -229,7 +244,11 @@ def _player(entry: Mapping[str, Any]) -> dict[str, Any]:
 
 
 def normalize_season(
-    *, league_id: int, season: int, payloads: Mapping[str, dict[str, Any]]
+    *,
+    league_id: int,
+    season: int,
+    payloads: Mapping[str, dict[str, Any]],
+    is_active: bool | None = None,
 ) -> dict[str, list[dict[str, Any]]]:
     """Normalize one season without canonical identity or analytics decisions."""
     tables: dict[str, list[dict[str, Any]]] = {name: [] for name in TABLE_SCHEMAS}
@@ -248,8 +267,13 @@ def normalize_season(
             "scoring_type": _string(scoring_settings.get("scoringType")),
             "regular_season_periods": _int(schedule_settings.get("matchupPeriodCount")),
             "playoff_team_count": _int(schedule_settings.get("playoffTeamCount")),
-            "current_scoring_period": _int(status.get("currentScoringPeriod")),
-            "is_active": not bool(status.get("isGameOver", False)),
+            "current_scoring_period": _int(status.get("currentScoringPeriod"))
+            or _int(status.get("currentMatchupPeriod")),
+            "current_matchup_period": _int(status.get("currentMatchupPeriod")),
+            "final_scoring_period": _int(status.get("finalScoringPeriod")),
+            "is_active": (
+                is_active if is_active is not None else not bool(status.get("isGameOver", False))
+            ),
             "lineup_slot_counts_json": _json(roster_settings.get("lineupSlotCounts", {})),
             "normalization_version": NORMALIZATION_VERSION,
             "source_file": league_source,
@@ -279,6 +303,7 @@ def normalize_season(
         owners = [str(item) for item in _list(team.get("owners"))]
         location = _string(team.get("location"))
         nickname = _string(team.get("nickname"))
+        overall_record = _dict(_dict(team.get("record")).get("overall"))
         tables["season_teams"].append(
             {
                 "league_id": league_id,
@@ -293,6 +318,14 @@ def normalize_season(
                 "primary_owner_id": _string(team.get("primaryOwner")),
                 "owner_ids_json": _json(owners),
                 "division_id": _int(team.get("divisionId")),
+                "playoff_seed": _positive_int(team.get("playoffSeed")),
+                "final_rank": _positive_int(team.get("rankFinal")),
+                "calculated_final_rank": _positive_int(team.get("rankCalculatedFinal")),
+                "official_wins": _int(overall_record.get("wins")),
+                "official_losses": _int(overall_record.get("losses")),
+                "official_ties": _int(overall_record.get("ties")),
+                "official_points_for": _float(overall_record.get("pointsFor")),
+                "official_points_against": _float(overall_record.get("pointsAgainst")),
                 "logo_url": _string(team.get("logo")),
                 "source_file": league_source,
                 "source_row_key": _row_key(season, "team", team_id or index),
