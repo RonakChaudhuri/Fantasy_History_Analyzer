@@ -11,7 +11,7 @@ import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-NORMALIZATION_VERSION = "phase2.v2"
+NORMALIZATION_VERSION = "phase2.v3"
 
 STRING = pa.string()
 INT = pa.int64()
@@ -229,6 +229,13 @@ def _string(value: Any) -> str | None:
     return value if isinstance(value, str) and value else None
 
 
+def _member_name(member: Mapping[str, Any]) -> str | None:
+    """Prefer ESPN's real member name over a generated public handle."""
+    name_parts = (_string(member.get("firstName")), _string(member.get("lastName")))
+    full_name = " ".join(part.strip() for part in name_parts if part and part.strip())
+    return full_name or _string(member.get("displayName"))
+
+
 def _json(value: Any) -> str:
     return json.dumps(value, separators=(",", ":"), sort_keys=True)
 
@@ -289,7 +296,7 @@ def normalize_season(
                 "league_id": league_id,
                 "season": season,
                 "source_member_id": member_id,
-                "display_name": _string(member.get("displayName")),
+                "display_name": _member_name(member),
                 "is_league_manager": bool(member.get("isLeagueManager", False)),
                 "canonical_manager_id": None,
                 "source_file": league_source,

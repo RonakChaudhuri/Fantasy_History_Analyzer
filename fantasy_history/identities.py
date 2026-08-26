@@ -217,6 +217,140 @@ def load_manager_mapping(path: Path = DEFAULT_MAPPING_PATH) -> ManagerMapping:
         raise IdentityValidationError(f"Manager mapping validation failed: {details}") from exc
 
 
+def replace_generic_display_names(
+    mapping: ManagerMapping, source_managers: pd.DataFrame
+) -> tuple[ManagerMapping, int]:
+    """Replace numeric ESPN fallback labels with the latest normalized member name."""
+    required = {"season", "source_member_id", "display_name"}
+    if not required.issubset(source_managers.columns):
+        raise IdentityValidationError("Processed manager names lack required source columns.")
+    usable = source_managers[
+        source_managers["source_member_id"].notna() & source_managers["display_name"].notna()
+    ].copy()
+    usable["source_member_id"] = usable["source_member_id"].astype(str)
+    usable["display_name"] = usable["display_name"].astype(str).str.strip()
+    usable = usable[usable["display_name"].ne("")].sort_values("season")
+
+    updated_managers = dict(mapping.managers)
+    update_count = 0
+    for key, manager in mapping.managers.items():
+        if not re.fullmatch(r"espn\d+", manager.display_name, flags=re.IGNORECASE):
+            continue
+        candidates = usable[usable["source_member_id"].isin(manager.espn_member_ids)]
+        if candidates.empty:
+            continue
+        candidate = str(candidates.iloc[-1]["display_name"])
+        if re.fullmatch(r"espn\d+", candidate, flags=re.IGNORECASE):
+            continue
+        updated_managers[key] = manager.model_copy(update={"display_name": candidate})
+        update_count += 1
+    return mapping.model_copy(update={"managers": updated_managers}), update_count
+
+
+def apply_manager_identity_overrides(
+    mapping: ManagerMapping,
+    *,
+    handle_member_ids: dict[str, set[str]],
+    renames: dict[str, str],
+    deletions: set[str],
+) -> tuple[ManagerMapping, int, int]:
+    """Rename, merge, or remove canonical entries selected by ESPN display handle."""
+    managers = dict(mapping.managers)
+
+    def source_key(handle: str) -> str:
+        member_ids = handle_member_ids.get(handle.casefold(), set())
+        matches = [
+            key
+            for key, manager in managers.items()
+            if member_ids.intersection(manager.espn_member_ids)
+        ]
+        if len(member_ids) != 1 or len(matches) != 1:
+            raise IdentityValidationError(
+                f"Handle {handle!r} must resolve to exactly one member and canonical entry."
+            )
+        return matches[0]
+
+    renamed = 0
+    merged = 0
+    for handle, display_name in renames.items():
+        key = source_key(handle)
+        source = managers[key]
+        destinations = [
+            candidate_key
+            for candidate_key, manager in managers.items()
+            if candidate_key != key and manager.display_name.casefold() == display_name.casefold()
+        ]
+        if len(destinations) > 1:
+            raise IdentityValidationError(
+                f"Display name {display_name!r} matches multiple canonical entries."
+            )
+        if not destinations:
+            managers[key] = source.model_copy(update={"display_name": display_name})
+            renamed += 1
+            continue
+
+        destination_key = destinations[0]
+        destination = managers[destination_key]
+        season_team_ids = dict(destination.season_team_ids)
+        for season, team_id in source.season_team_ids.items():
+            if season in season_team_ids and season_team_ids[season] != team_id:
+                raise IdentityValidationError(
+                    f"Cannot merge {handle!r}; season {season} has conflicting team IDs."
+                )
+            season_team_ids[season] = team_id
+        assignments = {
+            (item.season, item.source_team_id, item.assignment_type): item
+            for item in (*destination.explicit_assignments, *source.explicit_assignments)
+        }
+        managers[destination_key] = destination.model_copy(
+            update={
+                "display_name": display_name,
+                "espn_member_ids": list(
+                    dict.fromkeys((*destination.espn_member_ids, *source.espn_member_ids))
+                ),
+                "season_team_ids": season_team_ids,
+                "aliases": list(dict.fromkeys((*destination.aliases, *source.aliases))),
+                "explicit_assignments": list(assignments.values()),
+            }
+        )
+        del managers[key]
+        merged += 1
+
+    deleted = 0
+    for handle in deletions:
+        del managers[source_key(handle)]
+        deleted += 1
+
+    remaining_shared: dict[tuple[int, int], list[tuple[str, ExplicitAssignment]]] = defaultdict(
+        list
+    )
+    for manager_key, manager in managers.items():
+        for assignment in manager.explicit_assignments:
+            remaining_shared[(assignment.season, assignment.source_team_id)].append(
+                (manager_key, assignment)
+            )
+    for (season, team_id), rules in remaining_shared.items():
+        if len(rules) != 1:
+            continue
+        manager_key, orphaned_rule = rules[0]
+        manager = managers[manager_key]
+        season_team_ids = dict(manager.season_team_ids)
+        if season in season_team_ids and season_team_ids[season] != team_id:
+            raise IdentityValidationError(
+                f"Cannot collapse deleted shared assignment for season {season}."
+            )
+        season_team_ids[season] = team_id
+        managers[manager_key] = manager.model_copy(
+            update={
+                "season_team_ids": season_team_ids,
+                "explicit_assignments": [
+                    item for item in manager.explicit_assignments if item != orphaned_rule
+                ],
+            }
+        )
+    return mapping.model_copy(update={"managers": managers}), renamed + merged, deleted
+
+
 def _slug(value: str) -> str:
     normalized = re.sub(r"[^a-z0-9]+", "_", value.casefold()).strip("_")
     return normalized or "manager"

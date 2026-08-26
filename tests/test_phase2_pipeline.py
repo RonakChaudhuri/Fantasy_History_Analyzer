@@ -53,6 +53,17 @@ def test_normalization_preserves_ties_byes_playoffs_and_source_traceability() ->
             assert frame["source_row_key"].is_unique
 
 
+def test_normalization_prefers_member_name_over_numeric_espn_handle() -> None:
+    payload = load_fixture()
+    payload["league"]["members"][0].update(
+        {"displayName": "espn12345678", "firstName": "Synthetic", "lastName": "Manager"}
+    )
+
+    tables = normalize_season(league_id=999, season=2019, payloads=payload)
+
+    assert tables["managers"][0]["display_name"] == "Synthetic Manager"
+
+
 def test_snapshot_strips_private_notifications_and_rebuild_is_equivalent(tmp_path: Path) -> None:
     raw_root = tmp_path / "raw"
     season_root = raw_root / "2019"

@@ -12,8 +12,10 @@ from fantasy_history.identities import (
     CanonicalManager,
     ExplicitAssignment,
     ManagerMapping,
+    apply_manager_identity_overrides,
     load_manager_mapping,
     rebuild_identity_outputs,
+    replace_generic_display_names,
     resolve_manager_identities,
     suggest_identity_mappings,
     write_identity_suggestions,
@@ -83,6 +85,70 @@ def test_stable_member_id_resolves_renamed_teams_to_one_manager() -> None:
         "alpha",
     ]
     assert teams["source_row_key"].tolist() == ["2019:team:1", "2020:team:7"]
+
+
+def test_generic_display_name_uses_latest_source_backed_member_name() -> None:
+    mapping = ManagerMapping(managers={"alpha": manager("espn12345678", member_ids=["member-a"])})
+    members = source_managers(
+        (2024, "member-a", "Earlier Name"),
+        (2025, "member-a", "Latest Name"),
+    )
+
+    updated, count = replace_generic_display_names(mapping, members)
+
+    assert count == 1
+    assert updated.managers["alpha"].display_name == "Latest Name"
+    assert updated.managers["alpha"].espn_member_ids == ["member-a"]
+
+
+def test_reviewed_handle_override_merges_existing_manager_and_deletes_shared_entry() -> None:
+    shared = ExplicitAssignment(
+        season=2024, source_team_id=3, assignment_type=AssignmentType.CO_OWNER
+    )
+    mapping = ManagerMapping(
+        managers={
+            "existing": manager("Real Name", member_ids=["member-a"], season_teams={2023: 1}),
+            "fallback": manager("Fallback", member_ids=["member-b"], season_teams={2024: 2}),
+            "shared": manager("Shared", member_ids=["member-c"], assignments=[shared]),
+        }
+    )
+
+    updated, changed, deleted = apply_manager_identity_overrides(
+        mapping,
+        handle_member_ids={"fallback_handle": {"member-b"}, "remove_me": {"member-c"}},
+        renames={"fallback_handle": "Real Name"},
+        deletions={"remove_me"},
+    )
+
+    assert changed == 1
+    assert deleted == 1
+    assert set(updated.managers) == {"existing"}
+    assert updated.managers["existing"].espn_member_ids == ["member-a", "member-b"]
+    assert updated.managers["existing"].season_team_ids == {2023: 1, 2024: 2}
+
+
+def test_deleting_one_co_owner_collapses_remaining_rule_to_single_owner() -> None:
+    shared = ExplicitAssignment(
+        season=2024, source_team_id=3, assignment_type=AssignmentType.CO_OWNER
+    )
+    mapping = ManagerMapping(
+        managers={
+            "remaining": manager("Remaining", member_ids=["member-a"], assignments=[shared]),
+            "removed": manager("Removed", member_ids=["member-b"], assignments=[shared]),
+        }
+    )
+
+    updated, _, deleted = apply_manager_identity_overrides(
+        mapping,
+        handle_member_ids={"remove_me": {"member-b"}},
+        renames={},
+        deletions={"remove_me"},
+    )
+
+    assert deleted == 1
+    assert set(updated.managers) == {"remaining"}
+    assert updated.managers["remaining"].season_team_ids == {2024: 3}
+    assert updated.managers["remaining"].explicit_assignments == []
 
 
 def test_committed_example_mapping_is_valid_and_share_safe() -> None:

@@ -1,6 +1,6 @@
 # Fantasy History Analyzer
 
-A private, read-only Streamlit application for exploring ESPN fantasy football league history. The Streamlit preview remains synthetic while the explicit Phase 2 pipeline imports private ESPN history into ignored local JSON and Parquet files.
+A private, read-only Streamlit application for exploring ESPN fantasy football league history. The Phase 5 interface reads promoted local Parquet analytics and never contacts ESPN during normal rendering.
 
 ## Requirements
 
@@ -18,13 +18,13 @@ python -m pip install -e '.[dev]'
 
 Copy `.env.example` to the ignored `.env` file if you need to run a credentialed command. Set `ESPN_S2` and `ESPN_SWID` locally; never paste them into chat or commit them.
 
-## Run the fixture preview
+## Run the local app
 
 ```bash
 streamlit run app.py
 ```
 
-The preview reads only `data/fixtures/demo_overview.json` and makes no ESPN request during rendering.
+The Overview, Standings, Managers, Rivalries, Seasons, and Records journeys read only validated processed, identity, and analytics files. Missing or stale data produces local rebuild instructions rather than an automatic import.
 
 ## Import and normalize history
 
@@ -61,6 +61,22 @@ python scripts/validate_identities.py --require-complete
 
 The YAML supports stable member identifiers, explicit season/team overrides, aliases, co-owners, and ownership transfers. A valid rebuild writes source-traceable Parquet files under `data/derived/identities/` atomically; conflicts or required-completeness failures preserve the prior valid output.
 
+If ESPN supplied numeric fallback display handles, normalized history prefers the member's first/last name. Preview and then apply source-backed label replacements without changing identity assignments:
+
+```bash
+python scripts/update_manager_display_names.py
+python scripts/update_manager_display_names.py --apply
+python scripts/validate_identities.py --require-complete
+python scripts/rebuild_analytics.py
+```
+
+Reviewed handle-specific corrections can also be dry-run and atomically applied. A rename merges into an existing canonical display name when present; deleting one side of a shared assignment collapses the remaining side to a single-owner assignment only when the complete identity validator approves the result.
+
+```bash
+python scripts/apply_identity_overrides.py --rename 'HANDLE=Manager Name' --delete OLD_HANDLE
+python scripts/apply_identity_overrides.py --rename 'HANDLE=Manager Name' --delete OLD_HANDLE --apply
+```
+
 ## Rebuild analytics
 
 After identity validation passes with `--require-complete`, build the versioned analytics bundle without contacting ESPN:
@@ -91,12 +107,14 @@ ruff format .
 ## Current boundaries
 
 - Phase 0 ESPN feasibility is complete; see `docs/PHASE_0_FINDINGS.md`.
-- Phase 1 uses synthetic data for the UI and establishes module boundaries, configuration safety, and the overview shell.
+- Phase 1 established the synthetic UI foundation, module boundaries, configuration safety, and overview shell.
 - Phase 2 implements explicit ESPN importing, validated/manifested JSON snapshots, deterministic Parquet normalization, offline rebuilding, and integrity validation.
 - Phase 3 manager reconciliation is complete; the confirmed private mapping resolves every season-team and remains ignored by Git.
 - Phase 3 implementation and exit evidence are documented in [`docs/PHASE_3_STATUS.md`](docs/PHASE_3_STATUS.md).
 - Phase 4 is complete: the real local analytics bundle is promoted, reconciled, source-traceable, and versioned. Exit evidence is documented in [`docs/PHASE_4_STATUS.md`](docs/PHASE_4_STATUS.md).
 - Phase 5 inputs, page contracts, readiness behavior, accessibility requirements, tests, and exit criteria are prepared in [`docs/PHASE_5_HANDOFF.md`](docs/PHASE_5_HANDOFF.md).
+- Phase 5 implementation is in progress: all six core journeys and their shared readiness boundary are implemented; viewport and final manual reconciliation remain. See [`docs/PHASE_5_STATUS.md`](docs/PHASE_5_STATUS.md).
+- Phase 6 draft/roster inputs and source-sufficiency requirements are prepared in [`docs/PHASE_6_HANDOFF.md`](docs/PHASE_6_HANDOFF.md); implementation remains gated by Phase 5's remaining exit checks.
 - The MVP remains Python, Streamlit, pandas, Plotly, Parquet, YAML, and local files—no database or custom login.
 
 See `DEVELOPMENT_PLAN.md` for the approved scope, architecture, phases, security requirements, and acceptance tests.
