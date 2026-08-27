@@ -269,6 +269,45 @@ def build_actual_player_pool(
     return production
 
 
+def attach_final_position_ranks(
+    roster_rows: pd.DataFrame,
+    player_scores: pd.DataFrame,
+    players: pd.DataFrame,
+    seasons: pd.DataFrame,
+) -> pd.DataFrame:
+    """Attach source-supported final season rank within each player's position."""
+    result = roster_rows.copy()
+    result["final_position_rank"] = pd.Series(pd.NA, index=result.index, dtype="Int64")
+    if result.empty:
+        return result
+
+    player_pool = build_actual_player_pool(player_scores, players, seasons)
+    eligible = player_pool[
+        player_pool["production_eligibility"].eq("eligible")
+        & player_pool["position"].notna()
+        & player_pool["actual_fantasy_points"].notna()
+    ].copy()
+    if eligible.empty:
+        return result
+
+    eligible["final_position_rank"] = (
+        eligible.groupby(["league_id", "season", "position"])["actual_fantasy_points"]
+        .rank(method="min", ascending=False)
+        .astype("Int64")
+    )
+    ranks = eligible[
+        ["league_id", "season", "source_player_id", "final_position_rank"]
+    ].drop_duplicates(["league_id", "season", "source_player_id"], keep="last")
+    result = result.drop(columns="final_position_rank").merge(
+        ranks,
+        on=["league_id", "season", "source_player_id"],
+        how="left",
+        validate="many_to_one",
+    )
+    result["final_position_rank"] = result["final_position_rank"].astype("Int64")
+    return result
+
+
 def _allocate_flexible_demand(
     demand: dict[str, int],
     eligible: pd.DataFrame,

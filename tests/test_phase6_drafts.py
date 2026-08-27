@@ -5,6 +5,7 @@ import pandas as pd
 from fantasy_history.draft_value import (
     PRODUCTION_FORMULA_VERSION,
     attach_actual_production,
+    attach_final_position_ranks,
     build_draft_board,
     build_player_history,
     enrich_draft_picks,
@@ -246,6 +247,52 @@ def test_active_season_production_is_ineligible_even_when_actual_total_exists() 
 
     assert result["production_eligibility"] == "active_season"
     assert pd.isna(result["actual_fantasy_points"])
+
+
+def test_final_position_ranks_use_actual_season_points_and_preserve_missing() -> None:
+    seasons = pd.DataFrame([{"season": 2024, "is_active": False}])
+    players = pd.DataFrame(
+        [
+            {
+                "league_id": 1,
+                "season": 2024,
+                "source_player_id": player_id,
+                "full_name": f"Player {player_id}",
+                "default_position_id": 2,
+            }
+            for player_id in (101, 102, 103, 104)
+        ]
+    )
+    scores = pd.DataFrame(
+        [
+            {
+                "league_id": 1,
+                "season": 2024,
+                "source_player_id": player_id,
+                "score_season": 2024,
+                "stat_source": "actual",
+                "score_scope": "season_total",
+                "availability": "available",
+                "applied_fantasy_points": points,
+                "source_row_key": f"score:{player_id}",
+            }
+            for player_id, points in ((101, 100.0), (102, 90.0), (103, 90.0))
+        ]
+    )
+    roster = pd.DataFrame(
+        [
+            {"league_id": 1, "season": 2024, "source_player_id": player_id}
+            for player_id in (101, 102, 104)
+        ]
+    )
+
+    result = attach_final_position_ranks(roster, scores, players, seasons).set_index(
+        "source_player_id"
+    )
+
+    assert result.loc[101, "final_position_rank"] == 1
+    assert result.loc[102, "final_position_rank"] == 2
+    assert pd.isna(result.loc[104, "final_position_rank"])
 
 
 def test_final_roster_rejects_active_empty_and_missing_team_snapshots() -> None:

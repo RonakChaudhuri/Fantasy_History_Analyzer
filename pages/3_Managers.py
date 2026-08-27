@@ -6,6 +6,7 @@ import plotly.express as px
 import streamlit as st
 
 from fantasy_history.draft_value import (
+    attach_final_position_ranks,
     build_player_history,
     enrich_draft_picks,
     select_completed_roster,
@@ -177,20 +178,31 @@ with st.expander("Season-by-season stat sheet"):
                 if manager_roster.empty:
                     st.info("No final-roster rows are attributed to this manager for that season.")
                 else:
+                    manager_roster = attach_final_position_ranks(
+                        manager_roster,
+                        roster_inputs["player_scores"],
+                        roster_inputs["players"],
+                        bundle["seasons"],
+                    ).sort_values(["lineup_slot_id", "player_name"], kind="stable")
                     st.dataframe(
-                        manager_roster[["player_name", "position", "lineup_slot_id", "team_name"]],
+                        manager_roster[
+                            ["player_name", "position", "final_position_rank", "team_name"]
+                        ],
                         width="stretch",
                         hide_index=True,
                         column_config={
                             "player_name": "Player",
                             "position": "Pos.",
-                            "lineup_slot_id": "Final slot",
+                            "final_position_rank": st.column_config.NumberColumn(
+                                "Final positional rank", format="%d"
+                            ),
                             "team_name": "Team",
                         },
                     )
                     st.caption(
                         "This is ESPN's completed-season roster snapshot, not every player held "
-                        "during the season."
+                        "during the season. Rows remain ordered by ESPN's final lineup slot; "
+                        "positional rank uses actual season-total fantasy points."
                     )
 
 st.subheader("Opponents")
