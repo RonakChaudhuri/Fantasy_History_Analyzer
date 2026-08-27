@@ -2,6 +2,8 @@
 
 A private, read-only Streamlit application for exploring ESPN fantasy football league history. The application reads promoted local Parquet analytics and never contacts ESPN during normal rendering.
 
+**Live site:** [log-fantasyhistory.streamlit.app](https://log-fantasyhistory.streamlit.app)
+
 ## Requirements
 
 - Python 3.12 or 3.13
