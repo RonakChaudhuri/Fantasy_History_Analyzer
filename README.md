@@ -1,6 +1,6 @@
 # Fantasy History Analyzer
 
-A private, read-only Streamlit application for exploring ESPN fantasy football league history. The Phase 5 interface reads promoted local Parquet analytics and never contacts ESPN during normal rendering.
+A private, read-only Streamlit application for exploring ESPN fantasy football league history. The application reads promoted local Parquet analytics and never contacts ESPN during normal rendering.
 
 ## Requirements
 
@@ -93,6 +93,7 @@ Private snapshots, manifests, processed tables, staging data, and the canonical 
 ## Verify
 
 ```bash
+.venv/bin/python scripts/release_check.py
 .venv/bin/python scripts/validate_data.py
 .venv/bin/python scripts/validate_identities.py --require-complete
 .venv/bin/python scripts/rebuild_analytics.py
@@ -102,6 +103,11 @@ Private snapshots, manifests, processed tables, staging data, and the canonical 
 .venv/bin/ruff check .
 .venv/bin/mypy fantasy_history app.py pages scripts
 ```
+
+The release preflight is offline and read-only. It verifies core and draft bundle currency,
+identity completeness, prohibited tracked paths, and apparent credential assignments in tracked
+text files. It intentionally reports the manual reconciliation, responsive/keyboard, recovery,
+and deployment gates separately; a passing preflight does not by itself declare a release.
 
 To apply formatting locally:
 
@@ -120,7 +126,7 @@ ruff format .
 - Phase 5 inputs, page contracts, readiness behavior, accessibility requirements, tests, and exit criteria are prepared in [`docs/PHASE_5_HANDOFF.md`](docs/PHASE_5_HANDOFF.md).
 - Phase 5 implementation is in progress: all six core journeys and their shared readiness boundary are implemented; viewport and final manual reconciliation remain. See [`docs/PHASE_5_STATUS.md`](docs/PHASE_5_STATUS.md).
 - Phase 6 draft/roster inputs and source-sufficiency requirements are defined in [`docs/PHASE_6_HANDOFF.md`](docs/PHASE_6_HANDOFF.md). The user explicitly authorized development while Phase 5's manual exit checks remain open. Draft boards, pick history, tendencies, safe completed-season rosters, actual production, replacement baselines, expected value, boom/bust/drafted-sleeper labels, and report cards are implemented. Undrafted sleeper attribution remains unavailable because retained snapshots lack acquisition type. See [`docs/PHASE_6_STATUS.md`](docs/PHASE_6_STATUS.md) and [`docs/PHASE_6_SOURCE_SUFFICIENCY.md`](docs/PHASE_6_SOURCE_SUFFICIENCY.md).
-- Phase 7 validation, operations, privacy, recovery, and deployment decisions are prepared in [`docs/PHASE_7_HANDOFF.md`](docs/PHASE_7_HANDOFF.md). Phase 7 implementation remains gated by the open Phase 5 and Phase 6 manual exit checks unless the user explicitly changes that gate.
+- Phase 7 validation, operations, privacy, recovery, and deployment decisions are prepared in [`docs/PHASE_7_HANDOFF.md`](docs/PHASE_7_HANDOFF.md). Development began by explicit user authorization on 2026-08-27 while the open Phase 5 and Phase 6 checks remain release debt. See [`docs/PHASE_7_STATUS.md`](docs/PHASE_7_STATUS.md).
 - The MVP remains Python, Streamlit, pandas, Plotly, Parquet, YAML, and local files—no database or custom login.
 
 See `DEVELOPMENT_PLAN.md` for the approved scope, architecture, phases, security requirements, and acceptance tests.

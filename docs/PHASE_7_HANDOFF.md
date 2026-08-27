@@ -2,7 +2,7 @@
 
 Updated: 2026-08-27
 
-Status: **prepared; implementation is gated by the open Phase 5 and Phase 6 manual checks**
+Status: **active by explicit user authorization; Phase 5 and Phase 6 manual checks remain release debt**
 
 ## Purpose and gate
 
@@ -13,9 +13,9 @@ architecture.
 Phase 5 still requires desktop/phone, keyboard, displayed-value, and browser privacy checks.
 Phase 6 still requires early/recent ESPN draft reconciliation, representative final-roster
 reconciliation, sampled value/report-card reproduction, and the same browser checks. The user
-authorized Phase 6 before Phase 5 exited, but neither phase should be described as complete until
-its remaining evidence is recorded. Phase 7 implementation should begin only after those gates,
-unless the user explicitly authorizes another override.
+authorized Phase 7 development on 2026-08-27 before those gates exited. Neither earlier phase nor
+the MVP release should be described as complete until its remaining evidence is recorded. Current
+implementation status is maintained in `PHASE_7_STATUS.md`.
 
 ## Current automated baseline
 
@@ -27,6 +27,7 @@ expected wins, draft value, final-roster states, report cards, and Streamlit smo
 Run the release baseline from the repository root:
 
 ```bash
+.venv/bin/python scripts/release_check.py
 .venv/bin/python scripts/rebuild_processed.py
 .venv/bin/python scripts/validate_data.py
 .venv/bin/python scripts/validate_identities.py --require-complete
@@ -37,6 +38,10 @@ Run the release baseline from the repository root:
 .venv/bin/ruff check .
 .venv/bin/mypy fantasy_history app.py pages scripts
 ```
+
+The fast release preflight is offline and read-only. It checks promoted bundle currency,
+identity completeness, prohibited Git candidates, and apparent credentials without printing
+detected values. Its passing result does not close the manual release gates.
 
 Rebuilding processed data is offline but replaces the current processed bundle from retained raw
 snapshots after validation. Back up the current valid private data first when running the formal
