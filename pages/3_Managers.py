@@ -129,7 +129,7 @@ if not seasons.empty:
         labels={"value": "Wins", "season": "Season", "measure": "Measure"},
     )
     st.plotly_chart(figure, width="stretch")
-with st.expander("Season-by-season stat sheet"):
+with st.expander("Season-by-season stat sheet", expanded=True):
     st.caption("Select a season row to reveal that manager's final roster.")
     season_table = (
         seasons[season_columns].sort_values("season", ascending=False).reset_index(drop=True)

@@ -5,7 +5,7 @@ from __future__ import annotations
 import plotly.express as px
 import streamlit as st
 
-from fantasy_history.draft_value import select_completed_roster
+from fantasy_history.draft_value import attach_actual_production, select_completed_roster
 from fantasy_history.ui import (
     apply_app_style,
     render_formula_help,
@@ -107,8 +107,8 @@ season_metrics[2].metric(
     str(champion_rows.iloc[0]["team_name"]) if not champion_rows.empty else "Unavailable",
 )
 
-standings_tab, scores_tab, playoffs_tab, roster_tab = st.tabs(
-    ["Standings", "Weekly scores", "Playoffs", "Draft & roster"]
+standings_tab, scores_tab, players_tab, playoffs_tab, roster_tab = st.tabs(
+    ["Standings", "Weekly scores", "Best players", "Playoffs", "Draft & roster"]
 )
 with standings_tab:
     if standings.empty:
@@ -189,6 +189,67 @@ with scores_tab:
                 width="stretch",
                 hide_index=True,
             )
+
+with players_tab:
+    st.subheader("Best players of the year")
+    phase6 = require_phase6_data()
+    if phase6 is not None:
+        roster = select_completed_roster(
+            season,
+            bundle["seasons"],
+            phase6["roster_snapshots"],
+            phase6["roster_players"],
+            bundle["season_teams"],
+            bundle["assignments"],
+        )
+        if not roster.available:
+            st.info(roster.message)
+        else:
+            players = attach_actual_production(
+                roster.rows, phase6["player_scores"], bundle["seasons"]
+            )
+            leaders = (
+                players[players["production_eligibility"].eq("eligible")]
+                .sort_values(
+                    ["actual_fantasy_points", "player_name"],
+                    ascending=[False, True],
+                    kind="stable",
+                )
+                .head(10)
+                .copy()
+            )
+            if leaders.empty:
+                st.info("Player season totals are unavailable for this season.")
+            else:
+                leaders.insert(0, "rank", range(1, len(leaders) + 1))
+                st.dataframe(
+                    leaders[
+                        [
+                            "rank",
+                            "player_name",
+                            "position",
+                            "actual_fantasy_points",
+                            "team_name",
+                            "manager_name",
+                        ]
+                    ],
+                    width="stretch",
+                    hide_index=True,
+                    column_config={
+                        "rank": "Rank",
+                        "player_name": "Player",
+                        "position": "Pos.",
+                        "actual_fantasy_points": st.column_config.NumberColumn(
+                            "Fantasy points", format="%.1f"
+                        ),
+                        "team_name": "Fantasy team",
+                        "manager_name": "Manager",
+                    },
+                )
+                st.caption(
+                    "Ranked by ESPN's recorded season-total fantasy points. Ownership is the "
+                    "validated completed-season roster snapshot, not a full transaction history."
+                )
 
 with playoffs_tab:
     if playoffs.empty:

@@ -76,6 +76,20 @@ def test_season_dropdown_changes_page_and_query_with_one_interaction() -> None:
     assert not app.exception
     assert app.selectbox[0].value == target
     assert app.query_params["season"] == [target]
+    assert any(item.value == "Best players of the year" for item in app.subheader)
+    leader_tables = [
+        item.value
+        for item in app.dataframe
+        if {
+            "rank",
+            "player_name",
+            "actual_fantasy_points",
+            "team_name",
+            "manager_name",
+        }.issubset(item.value.columns)
+    ]
+    assert len(leader_tables) == 1
+    assert len(leader_tables[0]) == 10
 
 
 def test_draft_dropdown_changes_page_and_query_with_one_interaction() -> None:
