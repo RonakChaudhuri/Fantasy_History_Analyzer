@@ -15,6 +15,16 @@ DEMO_OVERVIEW_PATH = PROJECT_ROOT / "data" / "fixtures" / "demo_overview.json"
 PROCESSED_ROOT = PROJECT_ROOT / "data" / "processed"
 IDENTITIES_ROOT = PROJECT_ROOT / "data" / "derived" / "identities"
 ANALYTICS_ROOT = PROJECT_ROOT / "data" / "derived" / "analytics"
+DRAFT_ANALYTICS_ROOT = PROJECT_ROOT / "data" / "derived" / "draft_analytics"
+
+PHASE6_PROCESSED_TABLES = (
+    "drafts",
+    "draft_picks",
+    "players",
+    "roster_snapshots",
+    "roster_players",
+    "player_scores",
+)
 
 REQUIRED_PROCESSED_TABLES = ("seasons", "season_teams", "matchups")
 REQUIRED_IDENTITY_TABLES = ("canonical_managers", "manager_team_assignments")
@@ -169,3 +179,39 @@ def load_analytics_table(name: str, root: Path = ANALYTICS_ROOT) -> pd.DataFrame
     if name not in allowed:
         raise ValueError("Unknown analytics table name.")
     return pd.read_parquet(root / f"{name}.parquet")
+
+
+def load_draft_analytics_manifest(root: Path = DRAFT_ANALYTICS_ROOT) -> dict[str, Any]:
+    """Load the share-safe Phase 6 analytics manifest."""
+    return _read_json_object(root / "manifest.json")
+
+
+def load_draft_analytics_table(name: str, root: Path = DRAFT_ANALYTICS_ROOT) -> pd.DataFrame:
+    """Read one promoted, versioned Phase 6 analytics table."""
+    allowed = {
+        "replacement_baselines",
+        "draft_pick_values",
+        "draft_position_tendencies",
+        "repeated_players",
+        "draft_report_cards",
+    }
+    if name not in allowed:
+        raise ValueError("Unknown draft analytics table name.")
+    return pd.read_parquet(root / f"{name}.parquet")
+
+
+def phase6_source_cache_key(
+    *,
+    processed_root: Path = PROCESSED_ROOT,
+    identities_root: Path = IDENTITIES_ROOT,
+) -> str | None:
+    """Hash Phase 6 inputs because Phase 2 has no promoted processed manifest."""
+    paths = [processed_root / f"{name}.parquet" for name in PHASE6_PROCESSED_TABLES]
+    paths.append(identities_root / "manifest.json")
+    if any(not path.is_file() for path in paths):
+        return None
+    digest = hashlib.sha256()
+    for path in paths:
+        digest.update(path.name.encode("utf-8"))
+        digest.update(path.read_bytes())
+    return digest.hexdigest()

@@ -24,7 +24,7 @@ Copy `.env.example` to the ignored `.env` file if you need to run a credentialed
 streamlit run app.py
 ```
 
-The Overview, Standings, Managers, Rivalries, Seasons, and Records journeys read only validated processed, identity, and analytics files. Missing or stale data produces local rebuild instructions rather than an automatic import.
+The Overview, Standings, Managers, Rivalries, Seasons, Drafts, and Records journeys read only validated processed, identity, and analytics files. Missing or stale data produces local rebuild instructions rather than an automatic import.
 
 ## Import and normalize history
 
@@ -83,19 +83,24 @@ After identity validation passes with `--require-complete`, build the versioned 
 
 ```bash
 python scripts/rebuild_analytics.py
+python scripts/rebuild_draft_analytics.py
 ```
 
-The command calculates segmented standings, official finishes, expected wins and luck, manager careers, head-to-head totals, streaks, and traceable records. Formula, processed-source, identity, and attribution-policy checksums invalidate stale output. A failed build preserves the previous valid bundle.
+The commands calculate segmented standings, official finishes, expected wins and luck, manager careers, head-to-head totals, streaks, traceable records, replacement baselines, expected draft value, normalized surplus, classifications, and draft report cards. Formula, threshold, processed-source, identity, and attribution-policy checksums invalidate stale output. A failed build preserves the previous valid bundle.
 
 Private snapshots, manifests, processed tables, staging data, and the canonical manager mapping remain ignored by Git. A failed fetch, validation, write, normalization, or promotion leaves the previous valid raw and processed dataset in place.
 
 ## Verify
 
 ```bash
-pytest
-ruff format --check .
-ruff check .
-mypy fantasy_history app.py
+.venv/bin/python scripts/validate_data.py
+.venv/bin/python scripts/validate_identities.py --require-complete
+.venv/bin/python scripts/rebuild_analytics.py
+.venv/bin/python scripts/rebuild_draft_analytics.py
+.venv/bin/pytest
+.venv/bin/ruff format --check .
+.venv/bin/ruff check .
+.venv/bin/mypy fantasy_history app.py pages scripts
 ```
 
 To apply formatting locally:
@@ -114,7 +119,8 @@ ruff format .
 - Phase 4 is complete: the real local analytics bundle is promoted, reconciled, source-traceable, and versioned. Exit evidence is documented in [`docs/PHASE_4_STATUS.md`](docs/PHASE_4_STATUS.md).
 - Phase 5 inputs, page contracts, readiness behavior, accessibility requirements, tests, and exit criteria are prepared in [`docs/PHASE_5_HANDOFF.md`](docs/PHASE_5_HANDOFF.md).
 - Phase 5 implementation is in progress: all six core journeys and their shared readiness boundary are implemented; viewport and final manual reconciliation remain. See [`docs/PHASE_5_STATUS.md`](docs/PHASE_5_STATUS.md).
-- Phase 6 draft/roster inputs and source-sufficiency requirements are prepared in [`docs/PHASE_6_HANDOFF.md`](docs/PHASE_6_HANDOFF.md); implementation remains gated by Phase 5's remaining exit checks.
+- Phase 6 draft/roster inputs and source-sufficiency requirements are defined in [`docs/PHASE_6_HANDOFF.md`](docs/PHASE_6_HANDOFF.md). The user explicitly authorized development while Phase 5's manual exit checks remain open. Draft boards, pick history, tendencies, safe completed-season rosters, actual production, replacement baselines, expected value, boom/bust/drafted-sleeper labels, and report cards are implemented. Undrafted sleeper attribution remains unavailable because retained snapshots lack acquisition type. See [`docs/PHASE_6_STATUS.md`](docs/PHASE_6_STATUS.md) and [`docs/PHASE_6_SOURCE_SUFFICIENCY.md`](docs/PHASE_6_SOURCE_SUFFICIENCY.md).
+- Phase 7 validation, operations, privacy, recovery, and deployment decisions are prepared in [`docs/PHASE_7_HANDOFF.md`](docs/PHASE_7_HANDOFF.md). Phase 7 implementation remains gated by the open Phase 5 and Phase 6 manual exit checks unless the user explicitly changes that gate.
 - The MVP remains Python, Streamlit, pandas, Plotly, Parquet, YAML, and local files—no database or custom login.
 
 See `DEVELOPMENT_PLAN.md` for the approved scope, architecture, phases, security requirements, and acceptance tests.

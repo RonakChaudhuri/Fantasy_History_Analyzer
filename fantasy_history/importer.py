@@ -332,6 +332,7 @@ def validate_frames(frames: Mapping[str, pd.DataFrame]) -> list[str]:
         "draft_picks",
         "roster_snapshots",
         "roster_players",
+        "player_scores",
     ):
         frame = frames[name]
         candidate_columns = [column for column in frame if column in fantasy_team_columns]

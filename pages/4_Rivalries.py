@@ -8,6 +8,7 @@ import streamlit as st
 from fantasy_history.rivalries import attribute_matchup_facts, summarize_head_to_head
 from fantasy_history.ui import (
     SEGMENT_LABELS,
+    apply_app_style,
     manager_lookup,
     render_formula_help,
     require_ready_data,
@@ -15,7 +16,11 @@ from fantasy_history.ui import (
 )
 
 st.set_page_config(page_title="Rivalries · Fantasy History", page_icon="⚔️", layout="wide")
+apply_app_style()
 st.title("Rivalries")
+st.caption(
+    "Pick two managers for the story; detailed meetings and the league matrix stay tucked away."
+)
 
 loaded = require_ready_data()
 if loaded is None:
@@ -115,24 +120,34 @@ else:
         hover_data=["season", "matchup_period", "points_for", "points_against", "result"],
     )
     st.plotly_chart(chart, width="stretch")
-    st.dataframe(
-        history[
-            [
-                "season",
-                "matchup_period",
-                "segment",
-                "points_for",
-                "points_against",
-                "result",
-                "margin",
-            ]
-        ],
-        width="stretch",
-        hide_index=True,
-    )
+    with st.expander(f"View all {len(history)} meetings"):
+        st.dataframe(
+            history[
+                [
+                    "season",
+                    "matchup_period",
+                    "segment",
+                    "points_for",
+                    "points_against",
+                    "result",
+                    "margin",
+                ]
+            ],
+            width="stretch",
+            hide_index=True,
+            column_config={
+                "matchup_period": "Week",
+                "segment": "Stage",
+                "points_for": st.column_config.NumberColumn(names[manager_a], format="%.1f"),
+                "points_against": st.column_config.NumberColumn(names[manager_b], format="%.1f"),
+                "result": "Result",
+                "margin": st.column_config.NumberColumn("Margin", format="%+.1f"),
+            },
+        )
 
-st.subheader("League head-to-head matrix")
 matrix = summary.pivot(index="manager_id", columns="opponent_manager_id", values="wins")
 matrix = matrix.rename(index=names, columns=names)
-st.dataframe(matrix, width="stretch")
+with st.expander("League-wide head-to-head matrix"):
+    st.caption("Each cell is the row manager's wins against the column manager.")
+    st.dataframe(matrix, width="stretch")
 render_formula_help(readiness)

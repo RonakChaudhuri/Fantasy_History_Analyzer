@@ -11,7 +11,8 @@ import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-NORMALIZATION_VERSION = "phase2.v3"
+NORMALIZATION_VERSION = "phase2.v4"
+SCORE_SEMANTICS_VERSION = "phase6.espn-score.v1"
 
 STRING = pa.string()
 INT = pa.int64()
@@ -196,6 +197,27 @@ TABLE_SCHEMAS: dict[str, pa.Schema] = {
             ("source_row_key", STRING),
         ]
     ),
+    "player_scores": pa.schema(
+        [
+            ("league_id", INT),
+            ("season", INT),
+            ("observation_snapshot_type", STRING),
+            ("observation_scoring_period", INT),
+            ("source_team_id", INT),
+            ("source_player_id", INT),
+            ("score_season", INT),
+            ("scoring_period", INT),
+            ("stat_source_id", INT),
+            ("stat_split_type_id", INT),
+            ("stat_source", STRING),
+            ("score_scope", STRING),
+            ("applied_fantasy_points", FLOAT),
+            ("availability", STRING),
+            ("semantics_version", STRING),
+            ("source_file", STRING),
+            ("source_row_key", STRING),
+        ]
+    ),
 }
 
 SORT_KEYS: dict[str, list[str]] = {
@@ -248,6 +270,24 @@ def _player(entry: Mapping[str, Any]) -> dict[str, Any]:
     pool = _dict(entry.get("playerPoolEntry")) or _dict(entry)
     player = _dict(pool.get("player"))
     return player
+
+
+def _stat_source_label(stat_source_id: int | None) -> str:
+    """Return only the approved ESPN actual/projected semantic labels."""
+    if stat_source_id == 0:
+        return "actual"
+    if stat_source_id == 1:
+        return "projected"
+    return "unknown"
+
+
+def _score_scope(stat_split_type_id: int | None, scoring_period: int | None) -> str:
+    """Return the approved season-total/weekly semantic labels."""
+    if stat_split_type_id == 0 and scoring_period == 0:
+        return "season_total"
+    if stat_split_type_id == 1 and scoring_period is not None and scoring_period > 0:
+        return "weekly"
+    return "unknown"
 
 
 def normalize_season(
@@ -535,6 +575,7 @@ def normalize_season(
                 pool = _dict(entry.get("playerPoolEntry"))
                 player = _player(entry)
                 player_id = _int(player.get("id")) or _int(pool.get("id"))
+                player_key = _row_key(snapshot_key, player_id or entry_index)
                 tables["roster_players"].append(
                     {
                         "league_id": league_id,
@@ -550,9 +591,39 @@ def normalize_season(
                         "pro_team_id": _int(player.get("proTeamId")),
                         "default_position_id": _int(player.get("defaultPositionId")),
                         "source_file": source,
-                        "source_row_key": _row_key(snapshot_key, player_id or entry_index),
+                        "source_row_key": player_key,
                     }
                 )
+                if player_id is not None:
+                    for stat_index, raw_stat in enumerate(_list(player.get("stats"))):
+                        stat = _dict(raw_stat)
+                        score_period = _int(stat.get("scoringPeriodId"))
+                        stat_source_id = _int(stat.get("statSourceId"))
+                        stat_split_type_id = _int(stat.get("statSplitTypeId"))
+                        applied_points = _float(stat.get("appliedTotal"))
+                        tables["player_scores"].append(
+                            {
+                                "league_id": league_id,
+                                "season": season,
+                                "observation_snapshot_type": snapshot_type,
+                                "observation_scoring_period": scoring_period,
+                                "source_team_id": team_id,
+                                "source_player_id": player_id,
+                                "score_season": _int(stat.get("seasonId")),
+                                "scoring_period": score_period,
+                                "stat_source_id": stat_source_id,
+                                "stat_split_type_id": stat_split_type_id,
+                                "stat_source": _stat_source_label(stat_source_id),
+                                "score_scope": _score_scope(stat_split_type_id, score_period),
+                                "applied_fantasy_points": applied_points,
+                                "availability": (
+                                    "available" if applied_points is not None else "unavailable"
+                                ),
+                                "semantics_version": SCORE_SEMANTICS_VERSION,
+                                "source_file": source,
+                                "source_row_key": _row_key(player_key, "stat", stat_index),
+                            }
+                        )
                 if player_id is not None:
                     player_rows[player_id] = {
                         "league_id": league_id,

@@ -31,6 +31,7 @@ def test_overview_renders_without_network(monkeypatch) -> None:
         ("pages/3_Managers.py", "Manager profiles"),
         ("pages/4_Rivalries.py", "Rivalries"),
         ("pages/5_Seasons.py", "Seasons"),
+        ("pages/6_Drafts.py", "Drafts and rosters"),
         ("pages/7_Records.py", "Records cabinet"),
     ],
 )
@@ -66,6 +67,18 @@ def test_manager_dropdown_changes_profile_and_query_with_one_interaction() -> No
 
 def test_season_dropdown_changes_page_and_query_with_one_interaction() -> None:
     page = Path(__file__).parents[1] / "pages/5_Seasons.py"
+    app = AppTest.from_file(str(page), default_timeout=10).run()
+    target = str(app.selectbox[0].options[1])
+
+    app.selectbox[0].set_value(target).run()
+
+    assert not app.exception
+    assert app.selectbox[0].value == target
+    assert app.query_params["season"] == [target]
+
+
+def test_draft_dropdown_changes_page_and_query_with_one_interaction() -> None:
+    page = Path(__file__).parents[1] / "pages/6_Drafts.py"
     app = AppTest.from_file(str(page), default_timeout=10).run()
     target = str(app.selectbox[0].options[1])
 

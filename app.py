@@ -6,7 +6,12 @@ import plotly.express as px
 import streamlit as st
 
 from fantasy_history.formatting import format_points, format_record
-from fantasy_history.ui import record_holder_names, render_formula_help, require_ready_data
+from fantasy_history.ui import (
+    apply_app_style,
+    record_holder_names,
+    render_formula_help,
+    require_ready_data,
+)
 
 st.set_page_config(
     page_title="Fantasy History Analyzer",
@@ -14,9 +19,12 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded",
 )
+apply_app_style()
 
 st.title("🏈 Fantasy History Analyzer")
-st.caption("Every season. Every rivalry. Every receipt.")
+st.caption(
+    "Every season. Every rivalry. Every receipt — without making you read every stat at once."
+)
 
 loaded = require_ready_data()
 if loaded is None:
@@ -102,9 +110,9 @@ featured = named_records[
     )
     & named_records["availability"].eq("available")
 ].drop_duplicates("category")
-columns = st.columns(2)
+columns = st.columns(4)
 for index, row in enumerate(featured.itertuples(index=False)):
-    with columns[index % 2]:
+    with columns[index % 4]:
         st.metric(str(row.category_label), format_points(float(row.value)))
         st.caption(f"{row.holder or 'Unavailable'} · {int(row.season)}")
 

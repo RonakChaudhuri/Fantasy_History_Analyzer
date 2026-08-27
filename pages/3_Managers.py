@@ -5,18 +5,29 @@ from __future__ import annotations
 import plotly.express as px
 import streamlit as st
 
+from fantasy_history.draft_value import (
+    build_player_history,
+    enrich_draft_picks,
+    select_completed_roster,
+    summarize_position_allocation,
+)
 from fantasy_history.formatting import format_points, format_record, format_signed
 from fantasy_history.ui import (
     aliases_for,
+    apply_app_style,
     manager_lookup,
     record_holder_names,
     render_formula_help,
+    require_draft_analytics_data,
+    require_phase6_data,
     require_ready_data,
     selected_query_value,
 )
 
 st.set_page_config(page_title="Managers · Fantasy History", page_icon="👤", layout="wide")
+apply_app_style()
 st.title("Manager profiles")
+st.caption("Choose a manager for the highlights; open the detail sections only when you need them.")
 
 loaded = require_ready_data()
 if loaded is None:
@@ -81,7 +92,7 @@ seasons = seasons[
     seasons["canonical_manager_id"].astype(str).eq(manager_id)
     & seasons["segment"].eq("regular_season")
 ].sort_values("season")
-st.subheader("Season history")
+st.subheader("Career trend")
 season_columns = [
     "season",
     "wins",
@@ -97,8 +108,6 @@ season_columns = [
     "luck_differential",
     "shared_attribution",
 ]
-st.dataframe(seasons[season_columns], width="stretch", hide_index=True)
-
 if not seasons.empty:
     trend = seasons.melt(
         id_vars="season",
@@ -116,6 +125,73 @@ if not seasons.empty:
         labels={"value": "Wins", "season": "Season", "measure": "Measure"},
     )
     st.plotly_chart(figure, width="stretch")
+with st.expander("Season-by-season stat sheet"):
+    st.caption("Select a season row to reveal that manager's final roster.")
+    season_table = (
+        seasons[season_columns].sort_values("season", ascending=False).reset_index(drop=True)
+    )
+    season_event = st.dataframe(
+        season_table,
+        width="stretch",
+        hide_index=True,
+        key="manager_season_stat_sheet",
+        on_select="rerun",
+        selection_mode="single-row",
+        column_config={
+            "season": "Season",
+            "points_for": st.column_config.NumberColumn("Points", format="%.1f"),
+            "official_finish": "Finish",
+            "playoff_seed": "Seed",
+            "playoff_appearance": "Playoffs",
+            "championship": "Champion",
+            "runner_up": "Runner-up",
+            "expected_wins": st.column_config.NumberColumn("Expected wins", format="%.1f"),
+            "luck_differential": st.column_config.NumberColumn("Luck", format="%+.1f"),
+        },
+    )
+    selected_rows = season_event.selection.rows
+    if selected_rows:
+        selected_season = int(season_table.iloc[selected_rows[0]]["season"])
+        st.markdown(f"#### {selected_season} final roster")
+        roster_inputs = require_phase6_data()
+        if roster_inputs is not None:
+            roster = select_completed_roster(
+                selected_season,
+                bundle["seasons"],
+                roster_inputs["roster_snapshots"],
+                roster_inputs["roster_players"],
+                bundle["season_teams"],
+                bundle["assignments"],
+            )
+            if not roster.available:
+                st.info(roster.message)
+            else:
+                assigned_team_ids = set(
+                    bundle["assignments"].loc[
+                        bundle["assignments"]["season"].eq(selected_season)
+                        & bundle["assignments"]["canonical_manager_id"].astype(str).eq(manager_id),
+                        "source_team_id",
+                    ]
+                )
+                manager_roster = roster.rows[roster.rows["source_team_id"].isin(assigned_team_ids)]
+                if manager_roster.empty:
+                    st.info("No final-roster rows are attributed to this manager for that season.")
+                else:
+                    st.dataframe(
+                        manager_roster[["player_name", "position", "lineup_slot_id", "team_name"]],
+                        width="stretch",
+                        hide_index=True,
+                        column_config={
+                            "player_name": "Player",
+                            "position": "Pos.",
+                            "lineup_slot_id": "Final slot",
+                            "team_name": "Team",
+                        },
+                    )
+                    st.caption(
+                        "This is ESPN's completed-season roster snapshot, not every player held "
+                        "during the season."
+                    )
 
 st.subheader("Opponents")
 head = bundle["head_to_head"][
@@ -138,11 +214,6 @@ else:
         "closest_margin",
         "contains_shared_attribution",
     ]
-    st.dataframe(
-        head[opponent_columns].sort_values("meetings", ascending=False),
-        width="stretch",
-        hide_index=True,
-    )
     eligible = head[head["meetings"].gt(0)].copy()
     eligible["win_share"] = (eligible["wins"] + 0.5 * eligible["ties"]) / eligible["meetings"]
     favorite = eligible.sort_values(["win_share", "meetings"], ascending=False).iloc[0]
@@ -154,6 +225,20 @@ else:
         f"{favorite['win_share']:.3f} win share",
     )
     cols[1].metric("Nemesis", str(nemesis["opponent"]), f"{nemesis['win_share']:.3f} win share")
+    with st.expander("All opponent records"):
+        st.dataframe(
+            head[opponent_columns].sort_values("meetings", ascending=False),
+            width="stretch",
+            hide_index=True,
+            column_config={
+                "opponent": "Opponent",
+                "points_for": st.column_config.NumberColumn("Points for", format="%.1f"),
+                "points_against": st.column_config.NumberColumn("Points against", format="%.1f"),
+                "point_differential": st.column_config.NumberColumn("Point diff.", format="%+.1f"),
+                "average_margin": st.column_config.NumberColumn("Avg. margin", format="%+.1f"),
+                "closest_margin": st.column_config.NumberColumn("Closest", format="%.1f"),
+            },
+        )
 
 held = record_holder_names(bundle["records"], bundle)
 held = held[held["canonical_manager_id"].astype("string").eq(manager_id)]
@@ -161,6 +246,92 @@ st.subheader("Records held")
 if held.empty:
     st.caption("No manager-level league records currently held.")
 else:
-    st.dataframe(held[["category_label", "value", "season"]], width="stretch", hide_index=True)
+    with st.expander(f"View {len(held)} record(s)"):
+        st.dataframe(held[["category_label", "value", "season"]], width="stretch", hide_index=True)
+
+st.subheader("Draft tendencies")
+phase6 = require_phase6_data()
+if phase6 is not None:
+    picks = enrich_draft_picks(
+        phase6["draft_picks"],
+        phase6["players"],
+        bundle["season_teams"],
+        bundle["assignments"],
+    )
+    allocation = summarize_position_allocation(picks)
+    allocation = allocation[allocation["canonical_manager_id"].astype(str).eq(manager_id)]
+    if allocation.empty:
+        st.caption("Known-position draft tendencies are unavailable.")
+    else:
+        totals = allocation.groupby("position", as_index=False).agg(picks=("picks", "sum"))
+        position_chart = px.bar(
+            totals.sort_values("picks", ascending=False),
+            x="position",
+            y="picks",
+            title="Career picks by position",
+            labels={"position": "Position", "picks": "Picks"},
+        )
+        position_chart.update_layout(showlegend=False, margin=dict(l=0, r=0, t=45, b=0))
+        st.plotly_chart(position_chart, width="stretch")
+    repeated = build_player_history(picks)
+    repeated = repeated[
+        repeated["canonical_manager_id"].astype(str).eq(manager_id)
+        & repeated["seasons_drafted"].gt(1)
+    ]
+    if repeated.empty:
+        st.caption("No repeated player selections are available.")
+    else:
+        with st.expander("Repeated player selections"):
+            st.dataframe(
+                repeated[
+                    [
+                        "player_name",
+                        "seasons_drafted",
+                        "times_drafted",
+                        "seasons",
+                        "best_overall_pick",
+                    ]
+                ],
+                width="stretch",
+                hide_index=True,
+            )
+    draft_analytics = require_draft_analytics_data()
+    if draft_analytics is not None:
+        cards = draft_analytics["draft_report_cards"]
+        cards = cards[cards["canonical_manager_id"].astype(str).eq(manager_id)]
+        if not cards.empty:
+            latest_card = cards.sort_values("season", ascending=False).iloc[0]
+            card_metrics = st.columns(3)
+            card_metrics[0].metric(
+                f"{int(latest_card['season'])} draft grade", str(latest_card["grade"])
+            )
+            card_metrics[1].metric("Boom rate", f"{float(latest_card['boom_rate']):.0%}")
+            card_metrics[2].metric("Bust rate", f"{float(latest_card['bust_rate']):.0%}")
+            with st.expander("All draft report cards"):
+                st.dataframe(
+                    cards[
+                        [
+                            "season",
+                            "grade",
+                            "report_card_score",
+                            "eligible_picks",
+                            "average_normalized_surplus",
+                            "boom_rate",
+                            "bust_rate",
+                            "steal_rate",
+                        ]
+                    ].sort_values("season", ascending=False),
+                    width="stretch",
+                    hide_index=True,
+                    column_config={
+                        "report_card_score": st.column_config.NumberColumn("Score", format="%.0f"),
+                        "average_normalized_surplus": st.column_config.NumberColumn(
+                            "Avg. surplus", format="%+.2f"
+                        ),
+                        "boom_rate": st.column_config.NumberColumn("Boom rate", format="percent"),
+                        "bust_rate": st.column_config.NumberColumn("Bust rate", format="percent"),
+                        "steal_rate": st.column_config.NumberColumn("Steal rate", format="percent"),
+                    },
+                )
 
 render_formula_help(readiness)

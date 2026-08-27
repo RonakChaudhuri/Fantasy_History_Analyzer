@@ -5,10 +5,19 @@ from __future__ import annotations
 import plotly.express as px
 import streamlit as st
 
-from fantasy_history.ui import render_formula_help, require_ready_data, selected_query_value
+from fantasy_history.draft_value import select_completed_roster
+from fantasy_history.ui import (
+    apply_app_style,
+    render_formula_help,
+    require_phase6_data,
+    require_ready_data,
+    selected_query_value,
+)
 
 st.set_page_config(page_title="Seasons · Fantasy History", page_icon="📅", layout="wide")
+apply_app_style()
 st.title("Seasons")
+st.caption("A season at a glance, organized into standings, scores, playoffs, and roster history.")
 
 loaded = require_ready_data()
 if loaded is None:
@@ -66,66 +75,139 @@ standings = regular.merge(
     on=["league_id", "season", "source_team_id", "formula_version"],
     how="outer",
 ).merge(teams, on=["league_id", "season", "source_team_id"], how="left")
-st.subheader("Standings and finish")
-if standings.empty:
-    st.info("Season standings are unavailable.")
-else:
-    display_columns = [
-        "team_name",
-        "playoff_seed",
-        "official_finish",
-        "wins",
-        "losses",
-        "ties",
-        "win_percentage",
-        "points_for",
-        "points_against",
-        "playoff_appearance",
-        "championship",
-        "runner_up",
-    ]
-    st.dataframe(
-        standings[display_columns].sort_values(
-            ["official_finish", "win_percentage"], ascending=[True, False], na_position="last"
-        ),
-        width="stretch",
-        hide_index=True,
-    )
-
 facts = bundle["facts"][bundle["facts"]["season"].eq(season)].merge(
     teams[["source_team_id", "team_name"]], on="source_team_id", how="left"
 )
-st.subheader("Weekly scores")
-if facts.empty:
-    st.info("Completed weekly scores are unavailable for this season.")
-else:
-    chart = px.line(
-        facts.sort_values("scoring_period"),
-        x="scoring_period",
-        y="points_for",
-        color="team_name",
-        markers=True,
-        title=f"{season} completed team scores",
-        labels={"scoring_period": "Scoring period", "points_for": "Points", "team_name": "Team"},
-    )
-    st.plotly_chart(chart, width="stretch")
-    st.dataframe(
-        facts[
-            ["scoring_period", "team_name", "points_for", "points_against", "result", "segment"]
-        ].sort_values(["scoring_period", "team_name"]),
-        width="stretch",
-        hide_index=True,
-    )
-
-st.subheader("Championship bracket results")
 playoffs = facts[facts["segment"].eq("championship_playoff")]
-if playoffs.empty:
-    st.info("Championship-bracket results are unavailable or have not started.")
-else:
-    st.dataframe(
-        playoffs[["matchup_period", "team_name", "points_for", "points_against", "result"]],
-        width="stretch",
-        hide_index=True,
-    )
-st.caption("Draft board and final-roster history arrive in Phase 6.")
+
+season_metrics = st.columns(3)
+season_metrics[0].metric("Teams", int(teams["source_team_id"].nunique()))
+season_metrics[1].metric(
+    "Completed games", int(facts[["source_matchup_id"]].drop_duplicates().shape[0])
+)
+champion_rows = standings[standings["championship"].eq(True)] if not standings.empty else standings
+season_metrics[2].metric(
+    "Champion",
+    str(champion_rows.iloc[0]["team_name"]) if not champion_rows.empty else "Unavailable",
+)
+
+standings_tab, scores_tab, playoffs_tab, roster_tab = st.tabs(
+    ["Standings", "Weekly scores", "Playoffs", "Draft & roster"]
+)
+with standings_tab:
+    if standings.empty:
+        st.info("Season standings are unavailable.")
+    else:
+        ordered = standings.sort_values(
+            ["official_finish", "win_percentage"], ascending=[True, False], na_position="last"
+        )
+        compact = [
+            "team_name",
+            "official_finish",
+            "wins",
+            "losses",
+            "ties",
+            "win_percentage",
+            "points_for",
+            "playoff_appearance",
+        ]
+        st.dataframe(
+            ordered[compact],
+            width="stretch",
+            hide_index=True,
+            column_config={
+                "team_name": "Team",
+                "official_finish": "Finish",
+                "win_percentage": st.column_config.NumberColumn("Win %", format="%.3f"),
+                "points_for": st.column_config.NumberColumn("Points", format="%.1f"),
+                "playoff_appearance": "Playoffs",
+            },
+        )
+        with st.expander("Full standings details"):
+            display_columns = [
+                "team_name",
+                "playoff_seed",
+                "official_finish",
+                "wins",
+                "losses",
+                "ties",
+                "win_percentage",
+                "points_for",
+                "points_against",
+                "playoff_appearance",
+                "championship",
+                "runner_up",
+            ]
+            st.dataframe(ordered[display_columns], width="stretch", hide_index=True)
+
+with scores_tab:
+    if facts.empty:
+        st.info("Completed weekly scores are unavailable for this season.")
+    else:
+        chart = px.line(
+            facts.sort_values("scoring_period"),
+            x="scoring_period",
+            y="points_for",
+            color="team_name",
+            markers=True,
+            labels={
+                "scoring_period": "Week",
+                "points_for": "Points",
+                "team_name": "Team",
+            },
+        )
+        chart.update_layout(margin=dict(l=0, r=0, t=20, b=0))
+        st.plotly_chart(chart, width="stretch")
+        with st.expander("Weekly score table"):
+            st.dataframe(
+                facts[
+                    [
+                        "scoring_period",
+                        "team_name",
+                        "points_for",
+                        "points_against",
+                        "result",
+                        "segment",
+                    ]
+                ].sort_values(["scoring_period", "team_name"]),
+                width="stretch",
+                hide_index=True,
+            )
+
+with playoffs_tab:
+    if playoffs.empty:
+        st.info("Championship-bracket results are unavailable or have not started.")
+    else:
+        st.dataframe(
+            playoffs[["matchup_period", "team_name", "points_for", "points_against", "result"]],
+            width="stretch",
+            hide_index=True,
+            column_config={
+                "matchup_period": "Week",
+                "team_name": "Team",
+                "points_for": st.column_config.NumberColumn("Points", format="%.1f"),
+                "points_against": st.column_config.NumberColumn("Opponent", format="%.1f"),
+                "result": "Result",
+            },
+        )
+
+with roster_tab:
+    st.markdown(f"[Open the full {season} draft and roster view](Drafts?season={season})")
+    phase6 = require_phase6_data()
+    if phase6 is not None:
+        roster = select_completed_roster(
+            season,
+            bundle["seasons"],
+            phase6["roster_snapshots"],
+            phase6["roster_players"],
+            bundle["season_teams"],
+            bundle["assignments"],
+        )
+        if roster.available:
+            st.success(f"Completed roster snapshot available · {len(roster.rows):,} player entries")
+            st.caption(
+                "Open Drafts for team-level roster detail and the exact snapshot definition."
+            )
+        else:
+            st.info(roster.message)
 render_formula_help(readiness)

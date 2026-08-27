@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 from typing import Any
 
@@ -12,8 +13,11 @@ from fantasy_history.data_access import (
     DataReadiness,
     inspect_data_readiness,
     load_analytics_table,
+    load_draft_analytics_manifest,
+    load_draft_analytics_table,
     load_identity_table,
     load_processed_table,
+    phase6_source_cache_key,
 )
 
 SEGMENT_LABELS = {
@@ -43,6 +47,46 @@ RECORD_LABELS = {
     "most_playoff_wins": "Most playoff wins",
     "most_playoff_appearances": "Most playoff appearances",
 }
+
+
+def apply_app_style() -> None:
+    """Apply one restrained visual system across every Streamlit page."""
+    st.markdown(
+        """
+        <style>
+        [data-testid="stMainBlockContainer"] {
+            max-width: 1380px;
+            padding-top: 2.2rem;
+            padding-bottom: 4rem;
+        }
+        [data-testid="stMetric"] {
+            background: linear-gradient(145deg, #ffffff 0%, #f8fafc 100%);
+            border: 1px solid #e2e8f0;
+            border-radius: 14px;
+            padding: 1rem 1.1rem;
+            box-shadow: 0 4px 16px rgba(15, 23, 42, 0.045);
+        }
+        [data-testid="stMetricLabel"] { color: #64748b; }
+        [data-testid="stMetricValue"] { color: #0f172a; }
+        div[data-testid="stDataFrame"] {
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        div[data-testid="stTabs"] button { font-weight: 650; }
+        div[data-testid="stExpander"] {
+            border-color: #e2e8f0;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.7);
+        }
+        h1 { letter-spacing: -0.035em; }
+        h2, h3 { letter-spacing: -0.02em; }
+        .stCaption { color: #64748b; }
+        [data-testid="stSidebar"] { border-right: 1px solid #e2e8f0; }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
 
 
 @st.cache_data(show_spinner=False)
@@ -82,6 +126,60 @@ def require_ready_data() -> tuple[DataReadiness, dict[str, pd.DataFrame]] | None
     if readiness.cache_key is None:
         raise RuntimeError("Ready data lacks a cache key.")
     return readiness, load_ui_bundle(readiness.cache_key)
+
+
+@st.cache_data(show_spinner=False)
+def load_phase6_ui_bundle(cache_key: str) -> dict[str, pd.DataFrame]:
+    """Load source-supported draft and roster inputs under their own checksum."""
+    del cache_key
+    return {
+        "drafts": load_processed_table("drafts"),
+        "draft_picks": load_processed_table("draft_picks"),
+        "players": load_processed_table("players"),
+        "roster_snapshots": load_processed_table("roster_snapshots"),
+        "roster_players": load_processed_table("roster_players"),
+        "player_scores": load_processed_table("player_scores"),
+    }
+
+
+def require_phase6_data() -> dict[str, pd.DataFrame] | None:
+    """Render a safe unavailable state when draft/roster inputs are absent."""
+    cache_key = phase6_source_cache_key()
+    if cache_key is None:
+        st.info("Draft and roster history is unavailable. Run the offline processed-data rebuild.")
+        st.caption("No ESPN request is made while this page renders.")
+        return None
+    return load_phase6_ui_bundle(cache_key)
+
+
+@st.cache_data(show_spinner=False)
+def load_draft_analytics_ui_bundle(cache_key: str) -> dict[str, pd.DataFrame]:
+    """Load promoted draft analytics under their manifest checksum."""
+    del cache_key
+    return {
+        "replacement_baselines": load_draft_analytics_table("replacement_baselines"),
+        "draft_pick_values": load_draft_analytics_table("draft_pick_values"),
+        "draft_position_tendencies": load_draft_analytics_table("draft_position_tendencies"),
+        "repeated_players": load_draft_analytics_table("repeated_players"),
+        "draft_report_cards": load_draft_analytics_table("draft_report_cards"),
+    }
+
+
+def require_draft_analytics_data() -> dict[str, pd.DataFrame] | None:
+    """Require current draft analytics without rebuilding during page rendering."""
+    from fantasy_history.draft_analytics import draft_analytics_bundle_is_current
+
+    if not draft_analytics_bundle_is_current():
+        st.info(
+            "Draft-value analytics are unavailable or stale. Run "
+            "`python scripts/rebuild_draft_analytics.py`."
+        )
+        return None
+    manifest = load_draft_analytics_manifest()
+    cache_key = hashlib.sha256(
+        json.dumps(manifest, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+    return load_draft_analytics_ui_bundle(cache_key)
 
 
 def render_formula_help(readiness: DataReadiness) -> None:

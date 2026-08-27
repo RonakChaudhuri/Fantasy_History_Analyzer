@@ -18,7 +18,12 @@ from fantasy_history.importer import (
     rebuild_processed,
     stage_season_snapshot,
 )
-from fantasy_history.normalization import TABLE_SCHEMAS, combine_tables, normalize_season
+from fantasy_history.normalization import (
+    SCORE_SEMANTICS_VERSION,
+    TABLE_SCHEMAS,
+    combine_tables,
+    normalize_season,
+)
 
 FIXTURE = Path(__file__).parent / "fixtures" / "phase2_season.json"
 
@@ -62,6 +67,44 @@ def test_normalization_prefers_member_name_over_numeric_espn_handle() -> None:
     tables = normalize_season(league_id=999, season=2019, payloads=payload)
 
     assert tables["managers"][0]["display_name"] == "Synthetic Manager"
+
+
+def test_player_scores_preserve_approved_semantics_and_observations() -> None:
+    payload = load_fixture()
+    player = payload["rosters"]["teams"][0]["roster"]["entries"][0]["playerPoolEntry"]["player"]
+    player["stats"] = [
+        {
+            "seasonId": 2019,
+            "scoringPeriodId": 0,
+            "statSourceId": 0,
+            "statSplitTypeId": 0,
+            "appliedTotal": 321.5,
+        },
+        {
+            "seasonId": 2019,
+            "scoringPeriodId": 1,
+            "statSourceId": 1,
+            "statSplitTypeId": 1,
+            "appliedTotal": 19.25,
+        },
+        {
+            "seasonId": 2019,
+            "scoringPeriodId": 0,
+            "statSourceId": 1,
+            "statSplitTypeId": 2,
+            "appliedTotal": 17.0,
+        },
+    ]
+
+    frames = combine_tables([normalize_season(league_id=999, season=2019, payloads=payload)])
+    scores = frames["player_scores"].sort_values("source_row_key")
+
+    assert scores["stat_source"].tolist() == ["actual", "projected", "projected"]
+    assert scores["score_scope"].tolist() == ["season_total", "weekly", "unknown"]
+    assert scores["applied_fantasy_points"].tolist() == [321.5, 19.25, 17.0]
+    assert scores["availability"].eq("available").all()
+    assert scores["semantics_version"].eq(SCORE_SEMANTICS_VERSION).all()
+    assert scores["source_row_key"].is_unique
 
 
 def test_snapshot_strips_private_notifications_and_rebuild_is_equivalent(tmp_path: Path) -> None:
