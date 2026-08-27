@@ -18,6 +18,22 @@ st.set_page_config(page_title="Seasons · Fantasy History", page_icon="📅", la
 apply_app_style()
 st.title("Seasons")
 st.caption("A season at a glance, organized into standings, scores, playoffs, and roster history.")
+st.markdown(
+    """
+    <style>
+    .st-key-season_profile_selector label p {
+        font-size: 1.05rem;
+        font-weight: 650;
+    }
+    .st-key-season_profile_selector [data-baseweb="select"] > div {
+        min-height: 3.5rem;
+        font-size: 1.2rem;
+        font-weight: 650;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
 
 loaded = require_ready_data()
 if loaded is None:
