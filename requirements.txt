@@ -1,0 +1,8 @@
+httpx==0.28.1
+pandas==3.0.5
+plotly==6.9.0
+pyarrow==25.0.1
+pydantic==2.13.4
+python-dotenv==1.2.3
+PyYAML==6.0.3
+streamlit==1.62.0

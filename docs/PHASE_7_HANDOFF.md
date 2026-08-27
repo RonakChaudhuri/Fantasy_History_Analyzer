@@ -59,7 +59,7 @@ checksums.
 5. Perform the privacy audit against Git, generated shareable files, rendered browser output, and
    logs.
 6. Exercise backup, failed-refresh recovery, offline rebuild, and expired-cookie recovery.
-7. Record the deployment decision: local-only, or hosting protected at the platform level.
+7. Use the owner-approved public deployment mode, publishing only the sanitized rendered dataset.
 8. Produce release evidence with dates, seasons sampled, commands/results, known limitations, and
    the approved deployment mode.
 
@@ -155,10 +155,10 @@ not be copied from the private league.
 
 ## Deployment decision
 
-Local-only operation is acceptable for the MVP and is the default release recommendation until a
-different decision is recorded. Remote deployment requires platform-level access protection or an
-explicitly accepted unlisted-URL risk. It must not expose an unprotected refresh action, assume
-hosted files persist across restarts, or bundle private data without approval.
+The league owner explicitly accepted public viewing of rendered league history on 2026-08-27.
+The deployment bundle may therefore include values shown by the application, but it must exclude
+raw ESPN responses, credentials, and internal-only ESPN member/owner identifiers. The deployed app
+must not expose a refresh action or assume hosted files persist across restarts.
 
 Persistent hosted refreshes, multiple leagues, or concurrent editing require a separately approved
 storage architecture revision. Do not introduce a database, custom login, frontend/backend split,

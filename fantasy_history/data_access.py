@@ -12,10 +12,22 @@ import pandas as pd
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DEMO_OVERVIEW_PATH = PROJECT_ROOT / "data" / "fixtures" / "demo_overview.json"
-PROCESSED_ROOT = PROJECT_ROOT / "data" / "processed"
-IDENTITIES_ROOT = PROJECT_ROOT / "data" / "derived" / "identities"
-ANALYTICS_ROOT = PROJECT_ROOT / "data" / "derived" / "analytics"
-DRAFT_ANALYTICS_ROOT = PROJECT_ROOT / "data" / "derived" / "draft_analytics"
+PRIVATE_DATA_ROOT = PROJECT_ROOT / "data"
+PUBLIC_DATA_ROOT = PROJECT_ROOT / "data" / "public"
+
+
+def _default_data_root() -> Path:
+    """Prefer private local data, falling back to the committed public bundle."""
+    if (PRIVATE_DATA_ROOT / "processed" / "seasons.parquet").is_file():
+        return PRIVATE_DATA_ROOT
+    return PUBLIC_DATA_ROOT
+
+
+DATA_ROOT = _default_data_root()
+PROCESSED_ROOT = DATA_ROOT / "processed"
+IDENTITIES_ROOT = DATA_ROOT / "derived" / "identities"
+ANALYTICS_ROOT = DATA_ROOT / "derived" / "analytics"
+DRAFT_ANALYTICS_ROOT = DATA_ROOT / "derived" / "draft_analytics"
 
 PHASE6_PROCESSED_TABLES = (
     "drafts",

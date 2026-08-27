@@ -1,0 +1,27 @@
+{
+  "analytics_schema_version": "phase4.v1",
+  "attribution_policy_version": "shared-credit.v1",
+  "coverage_warnings": [
+    "Season 2026 is active; finish and incomplete-game analytics remain partial."
+  ],
+  "formula_version": "phase4.v1",
+  "identity_manifest_checksum": "05340de279e0c61d73ee9c705575e630775ebc910a57faf551ee124b1d4ad8c8",
+  "processed_source_checksums": {
+    "matchups": "e0e11a5ef5647f0003d0c75d03125e29c7ec3c98ebc5efa6c846a507f56fdc56",
+    "season_teams": "a4fc6c82b11b1f5e5b744a425088d195fbb9f07ad9d2b054737fc97b50ad0664",
+    "seasons": "90b817bf647d7d7de28cec648bc6983ec3a44f8e1e4a92bfa8740b5f9c8be97b",
+    "team_scores": "dd5a818b84b590370524513858846954c927de86a2703b0fde124ad4d6c27e3f"
+  },
+  "row_counts": {
+    "expected_wins": 96,
+    "head_to_head": 248,
+    "manager_careers": 17,
+    "manager_seasons": 252,
+    "matchup_facts": 1378,
+    "record_holders": 23,
+    "season_finishes": 96,
+    "streaks": 30,
+    "team_standings": 252,
+    "weekly_expected_wins": 1320
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "counts": {
+    "co_owned_teams": 0,
+    "conflict_count": 0,
+    "resolved_teams": 96,
+    "total_teams": 96,
+    "transferred_teams": 0,
+    "unresolved_teams": 0
+  },
+  "identity_schema_version": "phase3.v1",
+  "mapping_checksum": "not-distributed",
+  "source_checksums": {
+    "managers": "5b59bccbdb3755dfc80837c2980bdf86db9f9b7dd69c30a1116b1d9604ab88cb",
+    "season_teams": "a4fc6c82b11b1f5e5b744a425088d195fbb9f07ad9d2b054737fc97b50ad0664"
+  }
+}

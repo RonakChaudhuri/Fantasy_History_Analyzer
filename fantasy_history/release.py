@@ -27,7 +27,6 @@ MANUAL_RELEASE_GATES = (
     "Reproduce sampled draft-value labels and report-card grades from displayed inputs.",
     "Complete desktop, common-phone, keyboard, and rendered-browser privacy journeys.",
     "Exercise private backup/restore, fixture-backed failed refresh, and expired-cookie recovery.",
-    "Record the local-only or platform-protected deployment decision.",
 )
 
 _SECRET_ASSIGNMENT = re.compile(

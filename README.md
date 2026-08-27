@@ -26,6 +26,24 @@ streamlit run app.py
 
 The Overview, Standings, Managers, Rivalries, Seasons, Drafts, and Records journeys read only validated processed, identity, and analytics files. Missing or stale data produces local rebuild instructions rather than an automatic import.
 
+## Public deployment
+
+The public Streamlit deployment uses a committed, sanitized read-only bundle under `data/public/`.
+It preserves the values rendered by every page while excluding ESPN credentials, raw responses,
+and ESPN member/owner identifiers. Local development continues to prefer the ignored private data
+under `data/`; a deployment clone automatically falls back to `data/public/`.
+
+Rebuild the public bundle after a validated local import or analytics rebuild:
+
+```bash
+python scripts/build_deployment_bundle.py
+python scripts/release_check.py
+```
+
+Normal rendering remains offline and has no import or refresh control. The league owner accepted
+public viewing of rendered league history on 2026-08-27; this does not authorize publishing raw
+snapshots, credentials, or internal-only member identifiers.
+
 ## Import and normalize history
 
 These commands use local credentials and are the only workflows that contact ESPN. They stage and validate a complete replacement before promoting either raw snapshots or processed tables.

@@ -4,6 +4,10 @@ Updated: 2026-08-27
 
 Status: **in progress; automated release preflight implemented, manual gates remain open**
 
+Deployment decision: **public Streamlit MVP beta approved by the league owner on 2026-08-27**.
+Only the rendered league-history dataset may be public; raw ESPN responses, credentials, and
+internal-only ESPN member/owner identifiers remain excluded.
+
 ## Phase gate
 
 The user explicitly authorized Phase 7 development on 2026-08-27 while the documented Phase 5
@@ -13,6 +17,8 @@ earlier phase—or the MVP release—as complete.
 ## Implemented
 
 - `scripts/release_check.py` runs a fast, offline, read-only release preflight.
+- A sanitized public deployment bundle preserves all app-rendered league history while removing
+  ESPN member/owner identifiers and excluding credentials and raw responses.
 - Core readiness includes required promoted files, complete reviewed identities, and current core
   analytics source/formula/attribution checksums.
 - Draft readiness verifies its processed inputs, identity manifest, formula version, and threshold
@@ -43,7 +49,7 @@ manual evidence merely because the preflight output itself is share-safe.
 - Exercise private backup/restore, fixture-backed failed refresh, offline rebuild, and
   expired-cookie recovery.
 - Complete the Git/history, generated-output, browser, and log privacy audit.
-- Record the local-only or platform-protected deployment decision and final release evidence.
+- Complete the public Streamlit deployment and record its final release evidence.
 
 ## Verification recorded 2026-08-27
 
