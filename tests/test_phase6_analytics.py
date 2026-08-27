@@ -21,6 +21,7 @@ from fantasy_history.draft_value import (
     build_draft_report_cards,
     calculate_replacement_baselines,
     classify_draft_values,
+    select_manager_notable_picks,
 )
 
 
@@ -168,6 +169,64 @@ def test_report_card_rates_score_and_grade_reproduce_from_pick_rows() -> None:
     assert cards.loc["b", "bust_rate"] == 0.5
     assert cards.loc["b", "report_card_score"] == 50.0
     assert cards.loc["b", "grade"] == "C"
+
+
+def test_manager_notable_picks_rank_sleepers_and_busts_by_value_extreme() -> None:
+    values = pd.DataFrame(
+        [
+            {
+                "canonical_manager_id": "a",
+                "value_eligibility": "eligible",
+                "value_label": "sleeper",
+                "normalized_surplus": 0.8,
+                "season": 2023,
+                "overall_pick": 100,
+            },
+            {
+                "canonical_manager_id": "a",
+                "value_eligibility": "eligible",
+                "value_label": "sleeper",
+                "normalized_surplus": 1.4,
+                "season": 2024,
+                "overall_pick": 120,
+            },
+            {
+                "canonical_manager_id": "a",
+                "value_eligibility": "eligible",
+                "value_label": "bust",
+                "normalized_surplus": -1.1,
+                "season": 2024,
+                "overall_pick": 20,
+            },
+            {
+                "canonical_manager_id": "a",
+                "value_eligibility": "eligible",
+                "value_label": "bust",
+                "normalized_surplus": -2.2,
+                "season": 2022,
+                "overall_pick": 5,
+            },
+            {
+                "canonical_manager_id": "b",
+                "value_eligibility": "eligible",
+                "value_label": "sleeper",
+                "normalized_surplus": 3.0,
+                "season": 2024,
+                "overall_pick": 150,
+            },
+        ]
+    )
+
+    sleepers = select_manager_notable_picks(values, "a", "sleeper", limit=1)
+    busts = select_manager_notable_picks(values, "a", "bust")
+
+    assert sleepers["normalized_surplus"].tolist() == [1.4]
+    assert busts["normalized_surplus"].tolist() == [-2.2, -1.1]
+
+
+def test_manager_notable_picks_rejects_unsupported_label() -> None:
+    with pytest.raises(ValueError, match="sleepers or busts"):
+        select_manager_notable_picks(pd.DataFrame(), "a", "boom")
 
 
 def _checksum(path: Path) -> str:

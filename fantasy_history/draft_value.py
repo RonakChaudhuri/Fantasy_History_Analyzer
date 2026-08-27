@@ -431,6 +431,31 @@ def classify_draft_values(values: pd.DataFrame) -> pd.DataFrame:
     return result
 
 
+def select_manager_notable_picks(
+    values: pd.DataFrame,
+    manager_id: str,
+    label: str,
+    *,
+    limit: int = 5,
+) -> pd.DataFrame:
+    """Return one manager's largest classified sleeper or bust draft picks."""
+    if label not in {"sleeper", "bust"}:
+        raise ValueError("Notable manager picks must be sleepers or busts.")
+    if limit < 1:
+        raise ValueError("Notable manager pick limit must be positive.")
+
+    selected = values[
+        values["canonical_manager_id"].astype(str).eq(str(manager_id))
+        & values["value_eligibility"].eq("eligible")
+        & values["value_label"].eq(label)
+    ].copy()
+    return selected.sort_values(
+        ["normalized_surplus", "season", "overall_pick"],
+        ascending=[label == "bust", False, True],
+        kind="stable",
+    ).head(limit)
+
+
 def calculate_draft_pick_values(
     picks: pd.DataFrame,
     player_scores: pd.DataFrame,

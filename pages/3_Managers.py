@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import plotly.express as px
 import streamlit as st
 
@@ -10,6 +12,7 @@ from fantasy_history.draft_value import (
     build_player_history,
     enrich_draft_picks,
     select_completed_roster,
+    select_manager_notable_picks,
     summarize_position_allocation,
 )
 from fantasy_history.formatting import format_points, format_record, format_signed
@@ -309,6 +312,56 @@ if phase6 is not None:
             )
     draft_analytics = require_draft_analytics_data()
     if draft_analytics is not None:
+        values = draft_analytics["draft_pick_values"]
+        sleepers = select_manager_notable_picks(values, manager_id, "sleeper")
+        busts = select_manager_notable_picks(values, manager_id, "bust")
+        st.markdown("#### Biggest drafted sleepers and busts")
+        notable_columns = [
+            "player_name",
+            "season",
+            "round",
+            "overall_pick",
+            "position",
+            "actual_fantasy_points",
+            "normalized_surplus",
+        ]
+        notable_config: dict[str, Any] = {
+            "player_name": "Player",
+            "season": "Season",
+            "round": "Rd.",
+            "overall_pick": "Pick",
+            "position": "Pos.",
+            "actual_fantasy_points": st.column_config.NumberColumn("Points", format="%.1f"),
+            "normalized_surplus": st.column_config.NumberColumn("Value score", format="%+.2f"),
+        }
+        sleeper_column, bust_column = st.columns(2)
+        with sleeper_column:
+            st.markdown("**Sleepers**")
+            if sleepers.empty:
+                st.caption("No drafted sleepers meet the current threshold.")
+            else:
+                st.dataframe(
+                    sleepers[notable_columns],
+                    width="stretch",
+                    hide_index=True,
+                    column_config=notable_config,
+                )
+        with bust_column:
+            st.markdown("**Busts**")
+            if busts.empty:
+                st.caption("No busts meet the current threshold.")
+            else:
+                st.dataframe(
+                    busts[notable_columns],
+                    width="stretch",
+                    hide_index=True,
+                    column_config=notable_config,
+                )
+        st.caption(
+            "Career top five by within-season normalized surplus. Sleepers are round 10 or "
+            "later; undrafted sleeper attribution is unavailable."
+        )
+
         cards = draft_analytics["draft_report_cards"]
         cards = cards[cards["canonical_manager_id"].astype(str).eq(manager_id)]
         if not cards.empty:
