@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from fantasy_history import ui
 from fantasy_history.analytics import analytics_bundle_is_current
 from fantasy_history.deployment import build_deployment_bundle
 from fantasy_history.draft_analytics import draft_analytics_bundle_is_current
@@ -51,3 +52,26 @@ def test_public_bundle_preserves_rendered_data_and_removes_member_ids(tmp_path: 
     )
     manifest = json.loads((destination / "manifest.json").read_text(encoding="utf-8"))
     assert manifest["privacy"]["espn_member_identifiers_removed"] is True
+
+
+def test_draft_readiness_uses_the_selected_deployment_roots(monkeypatch, tmp_path: Path) -> None:
+    expected = {
+        "processed_root": tmp_path / "processed",
+        "identities_root": tmp_path / "derived" / "identities",
+        "draft_analytics_root": tmp_path / "derived" / "draft_analytics",
+    }
+    monkeypatch.setattr(ui, "PROCESSED_ROOT", expected["processed_root"])
+    monkeypatch.setattr(ui, "IDENTITIES_ROOT", expected["identities_root"])
+    monkeypatch.setattr(ui, "DRAFT_ANALYTICS_ROOT", expected["draft_analytics_root"])
+    observed: dict[str, Path] = {}
+
+    def fake_current(**roots: Path) -> bool:
+        observed.update(roots)
+        return False
+
+    monkeypatch.setattr(
+        "fantasy_history.draft_analytics.draft_analytics_bundle_is_current", fake_current
+    )
+
+    assert ui.require_draft_analytics_data() is None
+    assert observed == expected

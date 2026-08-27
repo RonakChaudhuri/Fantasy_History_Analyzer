@@ -10,6 +10,9 @@ import pandas as pd
 import streamlit as st
 
 from fantasy_history.data_access import (
+    DRAFT_ANALYTICS_ROOT,
+    IDENTITIES_ROOT,
+    PROCESSED_ROOT,
     DataReadiness,
     inspect_data_readiness,
     load_analytics_table,
@@ -169,7 +172,11 @@ def require_draft_analytics_data() -> dict[str, pd.DataFrame] | None:
     """Require current draft analytics without rebuilding during page rendering."""
     from fantasy_history.draft_analytics import draft_analytics_bundle_is_current
 
-    if not draft_analytics_bundle_is_current():
+    if not draft_analytics_bundle_is_current(
+        processed_root=PROCESSED_ROOT,
+        identities_root=IDENTITIES_ROOT,
+        draft_analytics_root=DRAFT_ANALYTICS_ROOT,
+    ):
         st.info(
             "Draft-value analytics are unavailable or stale. Run "
             "`python scripts/rebuild_draft_analytics.py`."
