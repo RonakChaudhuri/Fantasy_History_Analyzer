@@ -5,22 +5,22 @@
   ],
   "draft_analytics_schema_version": "phase6.v1",
   "formula_version": "phase6.draft-value.v1",
-  "identity_manifest_checksum": "05340de279e0c61d73ee9c705575e630775ebc910a57faf551ee124b1d4ad8c8",
+  "identity_manifest_checksum": "457ec6e4e56c426b76e7c0ee04155b96825444e8de86a1f1eb80fef22ea59cfc",
   "processed_source_checksums": {
-    "draft_picks": "f0b1fb98b7a9b38cb6b4c3de2756c9f84014ab25dded721ce8ef88e441141448",
-    "drafts": "b20fbde37685176f0addac594ab8383cd7bbaa062197e3251777a70f255c110a",
-    "player_scores": "8f758a1495954bbc8d069549c23c0a378c4d865862e801c2b949df29d2c9b17f",
-    "players": "8368e3fb49ab11f8ec2256ba9dd81f5c48e29eacf3e7903a55b9e456ee6affd7",
-    "roster_players": "ff36ba8bb00693bf89915e98fd2d95bee9e9bdeaa5cc5c4747311d6c81757e7a",
-    "roster_snapshots": "0a04482f60cc9b0d75923e6e7ff34addf23f466572551e6d8eea46de38779877",
-    "season_teams": "a4fc6c82b11b1f5e5b744a425088d195fbb9f07ad9d2b054737fc97b50ad0664",
-    "seasons": "90b817bf647d7d7de28cec648bc6983ec3a44f8e1e4a92bfa8740b5f9c8be97b"
+    "draft_picks": "89b6faf02cba68d72067c665eeb12634dca495a57e5d49924605356e27252f86",
+    "drafts": "d1a4e4e2048e41e1ceb304c39e07ee297d7fafeaabf6dd014eb650a197fbee5f",
+    "player_scores": "329d7feb55268202839f9dc7a7dfeffe502b97a464c43ee27a52e0f5977f01d1",
+    "players": "a2116a0611ab3b0c3082b934d1255ae93f4bfc9bda42d3fecd276d2f2635cb68",
+    "roster_players": "f7a6bc92d8a9ec6dee0d660876ecacf27bc1e579e10084a83c9604699b08e11e",
+    "roster_snapshots": "27cdd5bbef07d31c5fd40c2c2b53f32a4b005753487cd4cb79b0c42e2f46f6f0",
+    "season_teams": "39ca664e0eca27b7371c582ed7f7684d2c2992d8b6d51bd46d962e9f74a118ea",
+    "seasons": "7a26e6e59f63436803957cb11bc391d6c104ea57d962d32cf1d53c2eb28c1269"
   },
   "row_counts": {
     "draft_pick_values": 1560,
-    "draft_position_tendencies": 465,
+    "draft_position_tendencies": 537,
     "draft_report_cards": 84,
-    "repeated_players": 1223,
+    "repeated_players": 1376,
     "replacement_baselines": 42
   },
   "thresholds": {

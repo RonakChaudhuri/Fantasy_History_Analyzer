@@ -16,6 +16,7 @@ from fantasy_history.draft_value import (
     summarize_position_allocation,
 )
 from fantasy_history.formatting import format_points, format_record, format_signed
+from fantasy_history.trades import build_trade_history, manager_trade_history
 from fantasy_history.ui import (
     aliases_for,
     apply_app_style,
@@ -25,6 +26,7 @@ from fantasy_history.ui import (
     require_draft_analytics_data,
     require_phase6_data,
     require_ready_data,
+    require_trade_data,
     selected_query_value,
 )
 
@@ -207,6 +209,42 @@ with st.expander("Season-by-season stat sheet", expanded=True):
                         "during the season. Rows remain ordered by ESPN's final lineup slot; "
                         "positional rank uses actual season-total fantasy points."
                     )
+
+st.subheader("Trade history")
+trade_inputs = require_trade_data()
+if trade_inputs is not None:
+    history = build_trade_history(
+        trade_inputs["trades"],
+        trade_inputs["trade_items"],
+        trade_inputs["players"],
+        bundle["season_teams"],
+        bundle["assignments"],
+    )
+    manager_trades = manager_trade_history(history, manager_id)
+    manager_season_values = set(seasons["season"].astype(int))
+    unavailable = trade_inputs["trade_coverage"]
+    unavailable = unavailable[
+        unavailable["season"].isin(manager_season_values)
+        & unavailable["coverage_status"].eq("unavailable")
+    ]
+    if manager_trades.empty:
+        st.caption("No completed trades are available for this manager.")
+    else:
+        st.dataframe(
+            manager_trades[["season", "trade_date", "scoring_period", "managers", "deal"]],
+            width="stretch",
+            hide_index=True,
+            column_config={
+                "season": "Season",
+                "trade_date": st.column_config.DateColumn("Date"),
+                "scoring_period": "Week",
+                "managers": "Managers",
+                "deal": "Trade",
+            },
+        )
+    if not unavailable.empty:
+        years = ", ".join(str(value) for value in sorted(unavailable["season"].astype(int)))
+        st.caption(f"ESPN transaction history is unavailable for: {years}.")
 
 st.subheader("Opponents")
 head = bundle["head_to_head"][

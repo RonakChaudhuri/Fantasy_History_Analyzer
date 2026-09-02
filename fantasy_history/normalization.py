@@ -11,7 +11,7 @@ import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-NORMALIZATION_VERSION = "phase2.v4"
+NORMALIZATION_VERSION = "phase2.v5"
 SCORE_SEMANTICS_VERSION = "phase6.espn-score.v1"
 
 STRING = pa.string()
@@ -214,6 +214,46 @@ TABLE_SCHEMAS: dict[str, pa.Schema] = {
             ("applied_fantasy_points", FLOAT),
             ("availability", STRING),
             ("semantics_version", STRING),
+            ("source_file", STRING),
+            ("source_row_key", STRING),
+        ]
+    ),
+    "trades": pa.schema(
+        [
+            ("league_id", INT),
+            ("season", INT),
+            ("source_trade_id", STRING),
+            ("source_proposal_id", STRING),
+            ("scoring_period", INT),
+            ("executed_date_epoch_ms", INT),
+            ("participant_team_ids_json", STRING),
+            ("asset_count", INT),
+            ("source_file", STRING),
+            ("source_row_key", STRING),
+        ]
+    ),
+    "trade_items": pa.schema(
+        [
+            ("league_id", INT),
+            ("season", INT),
+            ("source_trade_id", STRING),
+            ("source_player_id", INT),
+            ("overall_pick", INT),
+            ("is_keeper", BOOL),
+            ("from_team_id", INT),
+            ("to_team_id", INT),
+            ("item_type", STRING),
+            ("source_file", STRING),
+            ("source_row_key", STRING),
+        ]
+    ),
+    "trade_coverage": pa.schema(
+        [
+            ("league_id", INT),
+            ("season", INT),
+            ("coverage_status", STRING),
+            ("completed_trade_count", INT),
+            ("detail", STRING),
             ("source_file", STRING),
             ("source_row_key", STRING),
         ]
@@ -640,6 +680,128 @@ def normalize_season(
     for key in sorted(payloads):
         if key.startswith("lineups_"):
             add_rosters(payloads[key], "weekly_lineup", int(key.removeprefix("lineups_")))
+
+    transaction_rows: dict[str, tuple[dict[str, Any], str]] = {}
+    for key in sorted(payloads):
+        if not key.startswith("transactions_"):
+            continue
+        source = f"{season}/transactions/week_{int(key.removeprefix('transactions_')):02d}.json"
+        for raw_transaction in _list(payloads[key].get("transactions")):
+            transaction = _dict(raw_transaction)
+            transaction_id = _string(transaction.get("id"))
+            if transaction_id:
+                transaction_rows[transaction_id] = (transaction, source)
+
+    candidates: list[tuple[dict[str, Any], dict[str, Any], str]] = []
+    for transaction, source in transaction_rows.values():
+        transaction_type = _string(transaction.get("type"))
+        status = _string(transaction.get("status"))
+        assets = _list(transaction.get("items"))
+        proposal = transaction
+        if transaction_type == "TRADE_UPHOLD" and status == "EXECUTED":
+            related = transaction_rows.get(_string(transaction.get("relatedTransactionId")) or "")
+            if related is not None:
+                proposal, _proposal_source = related
+                assets = _list(proposal.get("items"))
+        elif transaction_type != "TRADE_ACCEPT" or status != "EXECUTED":
+            continue
+        if assets:
+            candidates.append((transaction, proposal, source))
+
+    seen_trade_signatures: set[tuple[Any, ...]] = set()
+    for transaction, proposal, source in sorted(
+        candidates,
+        key=lambda row: (
+            0 if _string(row[0].get("type")) == "TRADE_ACCEPT" else 1,
+            _string(row[0].get("id")) or "",
+        ),
+    ):
+        assets = [_dict(item) for item in _list(proposal.get("items"))]
+        period = _int(transaction.get("scoringPeriodId")) or _int(proposal.get("scoringPeriodId"))
+        asset_signature = tuple(
+            sorted(
+                (
+                    _int(item.get("playerId")),
+                    _positive_int(item.get("fromTeamId")),
+                    _positive_int(item.get("toTeamId")),
+                )
+                for item in assets
+            )
+        )
+        signature = (period, asset_signature)
+        if signature in seen_trade_signatures:
+            continue
+        seen_trade_signatures.add(signature)
+        trade_id = _string(transaction.get("id"))
+        proposal_id = _string(proposal.get("id"))
+        if trade_id is None:
+            continue
+        team_ids = sorted(
+            {
+                team_id
+                for item in assets
+                for team_id in (
+                    _positive_int(item.get("fromTeamId")),
+                    _positive_int(item.get("toTeamId")),
+                )
+                if team_id is not None
+            }
+        )
+        tables["trades"].append(
+            {
+                "league_id": league_id,
+                "season": season,
+                "source_trade_id": trade_id,
+                "source_proposal_id": proposal_id,
+                "scoring_period": period,
+                "executed_date_epoch_ms": _int(transaction.get("proposedDate")),
+                "participant_team_ids_json": _json(team_ids),
+                "asset_count": len(assets),
+                "source_file": source,
+                "source_row_key": _row_key(season, "trade", trade_id),
+            }
+        )
+        for index, item in enumerate(assets):
+            player_id = _int(item.get("playerId"))
+            tables["trade_items"].append(
+                {
+                    "league_id": league_id,
+                    "season": season,
+                    "source_trade_id": trade_id,
+                    "source_player_id": player_id,
+                    "overall_pick": _positive_int(item.get("overallPickNumber")),
+                    "is_keeper": bool(item.get("isKeeper", False)),
+                    "from_team_id": _positive_int(item.get("fromTeamId")),
+                    "to_team_id": _positive_int(item.get("toTeamId")),
+                    "item_type": _string(item.get("type")),
+                    "source_file": source,
+                    "source_row_key": _row_key(season, "trade", trade_id, player_id or index),
+                }
+            )
+    transaction_sources = [key for key in payloads if key.startswith("transactions_")]
+    tables["trade_coverage"].append(
+        {
+            "league_id": league_id,
+            "season": season,
+            "coverage_status": (
+                "partial"
+                if transaction_sources and is_active
+                else "complete"
+                if transaction_sources
+                else "unavailable"
+            ),
+            "completed_trade_count": (len(tables["trades"]) if transaction_sources else None),
+            "detail": (
+                None
+                if transaction_sources
+                else "ESPN did not expose transaction history for this season."
+            ),
+            "source_file": (
+                f"{season}/transactions/" if transaction_sources else f"{season}/manifest.json"
+            ),
+            "source_row_key": _row_key(season, "trade-coverage"),
+        }
+    )
     tables["players"].extend(player_rows.values())
     return tables
 

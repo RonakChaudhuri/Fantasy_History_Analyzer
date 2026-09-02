@@ -29,6 +29,9 @@ PROCESSED_TABLES = (
     "season_teams",
     "seasons",
     "team_scores",
+    "trade_coverage",
+    "trade_items",
+    "trades",
 )
 DERIVED_TABLES = {
     "identities": ("canonical_managers", "manager_team_assignments"),

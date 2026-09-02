@@ -6,11 +6,13 @@ import plotly.express as px
 import streamlit as st
 
 from fantasy_history.draft_value import attach_actual_production, select_completed_roster
+from fantasy_history.trades import build_trade_history
 from fantasy_history.ui import (
     apply_app_style,
     render_formula_help,
     require_phase6_data,
     require_ready_data,
+    require_trade_data,
     selected_query_value,
 )
 
@@ -107,8 +109,8 @@ season_metrics[2].metric(
     str(champion_rows.iloc[0]["team_name"]) if not champion_rows.empty else "Unavailable",
 )
 
-standings_tab, scores_tab, players_tab, playoffs_tab, roster_tab = st.tabs(
-    ["Standings", "Weekly scores", "Best players", "Playoffs", "Draft & roster"]
+standings_tab, scores_tab, players_tab, playoffs_tab, trades_tab, roster_tab = st.tabs(
+    ["Standings", "Weekly scores", "Best players", "Playoffs", "Trades", "Draft & roster"]
 )
 with standings_tab:
     if standings.empty:
@@ -267,6 +269,40 @@ with playoffs_tab:
                 "result": "Result",
             },
         )
+
+with trades_tab:
+    trade_inputs = require_trade_data()
+    if trade_inputs is not None:
+        coverage = trade_inputs["trade_coverage"]
+        coverage = coverage[coverage["season"].eq(season)]
+        if coverage.empty or coverage.iloc[0]["coverage_status"] == "unavailable":
+            st.info("ESPN transaction history is unavailable for this season.")
+        else:
+            history = build_trade_history(
+                trade_inputs["trades"],
+                trade_inputs["trade_items"],
+                trade_inputs["players"],
+                bundle["season_teams"],
+                bundle["assignments"],
+            )
+            season_trades = history[history["season"].eq(season)]
+            if season_trades.empty:
+                st.caption("No completed trades were recorded for this season.")
+            else:
+                st.dataframe(
+                    season_trades[["trade_date", "scoring_period", "managers", "deal"]],
+                    width="stretch",
+                    hide_index=True,
+                    column_config={
+                        "trade_date": st.column_config.DateColumn("Date"),
+                        "scoring_period": "Week",
+                        "managers": "Managers",
+                        "deal": "Trade",
+                    },
+                )
+            if coverage.iloc[0]["coverage_status"] == "partial":
+                st.caption("This active season's trade history is partial.")
+        st.caption("Completed trades only; proposals, declines, vetoes, and waivers are excluded.")
 
 with roster_tab:
     st.markdown(f"[Open the full {season} draft and roster view](Drafts?season={season})")

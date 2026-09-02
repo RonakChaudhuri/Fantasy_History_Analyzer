@@ -59,6 +59,7 @@ SECTION_ROOTS: dict[str, tuple[str, ...]] = {
     "draft": ("draftDetail",),
     "rosters": ("teams",),
     "lineups": ("schedule",),
+    "transactions": ("transactions",),
 }
 
 
@@ -79,7 +80,13 @@ def unwrap_league_payload(value: Any, *, season: int) -> tuple[dict[str, Any], b
 def validate_section(section: str, value: Any, *, season: int) -> dict[str, Any]:
     """Validate stable container boundaries while allowing ESPN's dynamic maps."""
     payload, _ = unwrap_league_payload(value, season=season)
-    base_section = "lineups" if section.startswith("lineups_") else section
+    base_section = (
+        "lineups"
+        if section.startswith("lineups_")
+        else "transactions"
+        if section.startswith("transactions_")
+        else section
+    )
     required = SECTION_ROOTS.get(base_section)
     if required is None:
         raise ResponseValidationError(f"Unknown snapshot section {section!r}.")
@@ -88,7 +95,7 @@ def validate_section(section: str, value: Any, *, season: int) -> dict[str, Any]
         joined = ", ".join(missing)
         raise ResponseValidationError(f"Season {season} {base_section} is missing {joined}.")
 
-    list_roots = {"teams", "schedule", "members"}
+    list_roots = {"teams", "schedule", "members", "transactions"}
     for key in list_roots.intersection(payload):
         if not isinstance(payload[key], list):
             raise ResponseValidationError(f"Season {season} {base_section}.{key} must be an array.")

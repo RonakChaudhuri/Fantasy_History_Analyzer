@@ -164,7 +164,8 @@ class FakeClient:
         self.fail_section = fail_section
         self.settings = SimpleNamespace(league_id=999)
 
-    def fetch(self, season, views, extra_params=None):
+    def fetch(self, season, views, extra_params=None, headers=None):
+        del headers
         if views == ("mSettings", "mTeam", "mNav"):
             key = "league"
         elif views == ("mMatchup", "mMatchupScore"):
@@ -173,6 +174,8 @@ class FakeClient:
             key = "draft"
         elif views == ("mRoster",):
             key = "rosters"
+        elif views == ("mTransactions2",):
+            return {"transactions": []}, "current"
         else:
             key = f"lineups_{extra_params['scoringPeriodId']}"
             if key not in self.payloads:
@@ -180,6 +183,49 @@ class FakeClient:
         if key == self.fail_section:
             raise RuntimeError("injected fetch failure")
         return self.payloads[key], "current"
+
+
+def test_trade_normalization_keeps_completed_assets_and_deduplicates_events() -> None:
+    payload = load_fixture()
+    items = [
+        {"playerId": 9001, "fromTeamId": 1, "toTeamId": 2, "type": "DROP"},
+        {"playerId": 9002, "fromTeamId": 2, "toTeamId": 1, "type": "DROP"},
+    ]
+    payload["transactions_1"] = {
+        "transactions": [
+            {
+                "id": "proposal-1",
+                "type": "TRADE_PROPOSAL",
+                "status": "PENDING",
+                "scoringPeriodId": 1,
+                "items": items,
+            },
+            {
+                "id": "uphold-1",
+                "type": "TRADE_UPHOLD",
+                "status": "EXECUTED",
+                "relatedTransactionId": "proposal-1",
+                "scoringPeriodId": 1,
+                "proposedDate": 1_700_000_000_000,
+            },
+            {
+                "id": "accept-1",
+                "type": "TRADE_ACCEPT",
+                "status": "EXECUTED",
+                "relatedTransactionId": "proposal-1",
+                "scoringPeriodId": 1,
+                "proposedDate": 1_700_000_000_000,
+                "items": items,
+            },
+        ]
+    }
+
+    frames = combine_tables([normalize_season(league_id=999, season=2019, payloads=payload)])
+
+    assert frames["trades"]["source_trade_id"].tolist() == ["accept-1"]
+    assert len(frames["trade_items"]) == 2
+    assert frames["trade_coverage"].iloc[0]["coverage_status"] == "complete"
+    assert frames["trade_coverage"].iloc[0]["completed_trade_count"] == 1
 
 
 def test_failed_refresh_preserves_previous_raw_and_processed_data(tmp_path: Path) -> None:

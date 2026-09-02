@@ -26,7 +26,7 @@ Copy `.env.example` to the ignored `.env` file if you need to run a credentialed
 streamlit run app.py
 ```
 
-The Overview, Standings, Managers, Rivalries, Seasons, Drafts, and Records journeys read only validated processed, identity, and analytics files. Missing or stale data produces local rebuild instructions rather than an automatic import.
+The Overview, Standings, Managers, Rivalries, Seasons, Drafts, and Records journeys read only validated processed, identity, and analytics files. Manager and season pages include completed trade history where ESPN exposes it. Missing or stale data produces local rebuild instructions rather than an automatic import.
 
 ## Public deployment
 

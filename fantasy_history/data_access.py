@@ -38,6 +38,8 @@ PHASE6_PROCESSED_TABLES = (
     "player_scores",
 )
 
+TRADE_PROCESSED_TABLES = ("trades", "trade_items", "trade_coverage", "players")
+
 REQUIRED_PROCESSED_TABLES = ("seasons", "season_teams", "matchups")
 REQUIRED_IDENTITY_TABLES = ("canonical_managers", "manager_team_assignments")
 REQUIRED_ANALYTICS_TABLES = (
@@ -219,6 +221,23 @@ def phase6_source_cache_key(
 ) -> str | None:
     """Hash Phase 6 inputs because Phase 2 has no promoted processed manifest."""
     paths = [processed_root / f"{name}.parquet" for name in PHASE6_PROCESSED_TABLES]
+    paths.append(identities_root / "manifest.json")
+    if any(not path.is_file() for path in paths):
+        return None
+    digest = hashlib.sha256()
+    for path in paths:
+        digest.update(path.name.encode("utf-8"))
+        digest.update(path.read_bytes())
+    return digest.hexdigest()
+
+
+def trade_source_cache_key(
+    *,
+    processed_root: Path = PROCESSED_ROOT,
+    identities_root: Path = IDENTITIES_ROOT,
+) -> str | None:
+    """Hash normalized trade inputs and canonical identity assignments."""
+    paths = [processed_root / f"{name}.parquet" for name in TRADE_PROCESSED_TABLES]
     paths.append(identities_root / "manifest.json")
     if any(not path.is_file() for path in paths):
         return None

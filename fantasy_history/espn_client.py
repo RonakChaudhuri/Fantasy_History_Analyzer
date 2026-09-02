@@ -67,11 +67,23 @@ class EspnClient:
     def __exit__(self, *_args: object) -> None:
         self.close()
 
-    def _request(self, *, season: int, url: str, params: list[tuple[str, Any]]) -> Any:
+    def _request(
+        self,
+        *,
+        season: int,
+        url: str,
+        params: list[tuple[str, Any]],
+        headers: Mapping[str, str] | None = None,
+    ) -> Any:
         last_reason = "temporary network failure"
         for attempt in range(1, self.max_attempts + 1):
             try:
-                response = self.client.get(url, params=params, timeout=self.timeout)
+                response = self.client.get(
+                    url,
+                    params=params,
+                    headers=dict(headers) if headers else None,
+                    timeout=self.timeout,
+                )
             except (httpx.TimeoutException, httpx.TransportError) as exc:
                 last_reason = type(exc).__name__
             else:
@@ -107,13 +119,14 @@ class EspnClient:
         season: int,
         views: Iterable[str],
         extra_params: Mapping[str, int | str] | None = None,
+        headers: Mapping[str, str] | None = None,
     ) -> tuple[dict[str, Any], str]:
         """Fetch a league view, falling back to leagueHistory on current-route auth failure."""
         params: list[tuple[str, Any]] = [("view", view) for view in views]
         params.extend((extra_params or {}).items())
         current_url = f"{API_ROOT}/seasons/{season}/segments/0/leagues/{self.settings.league_id}"
         try:
-            raw = self._request(season=season, url=current_url, params=params)
+            raw = self._request(season=season, url=current_url, params=params, headers=headers)
             payload, _ = unwrap_league_payload(raw, season=season)
             return payload, "current"
         except EspnAuthenticationError:
@@ -122,6 +135,7 @@ class EspnClient:
                 season=season,
                 url=history_url,
                 params=[("seasonId", season), *params],
+                headers=headers,
             )
             try:
                 payload, _ = unwrap_league_payload(raw, season=season)

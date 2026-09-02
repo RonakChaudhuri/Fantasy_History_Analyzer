@@ -12,7 +12,7 @@ Fantasy History Analyzer is a private, read-only Streamlit web application for e
 - Language and UI: Python and Streamlit
 - Storage: Local JSON, Parquet, and YAML files; no database
 
-The main experiences are league overview, all-time standings, manager history, head-to-head rivalries, seasons, playoffs, drafts, final rosters, records, and player-value analysis.
+The main experiences are league overview, all-time standings, manager history, head-to-head rivalries, seasons, playoffs, completed trade history, drafts, final rosters, records, and player-value analysis.
 
 ## 2. Product principles
 
@@ -182,6 +182,9 @@ data/processed/drafts.parquet
 data/processed/draft_picks.parquet
 data/processed/roster_snapshots.parquet
 data/processed/roster_players.parquet
+data/processed/trades.parquet
+data/processed/trade_items.parquet
+data/processed/trade_coverage.parquet
 ```
 
 Every processed row should retain enough source keys to trace it to a season and raw record.
@@ -295,6 +298,7 @@ The importer must handle current and historical response shapes, use bounded ret
 - Head-to-head opponent table
 - Nemesis and favorite opponent
 - Draft tendencies and value metrics
+- Completed trade history, with unavailable-season notices
 - Records held
 
 ### Rivalries
@@ -312,6 +316,7 @@ The importer must handle current and historical response shapes, use bounded ret
 - Playoff bracket or reconstructed results
 - Weekly schedule and scores
 - Draft and final rosters
+- Completed trade history
 - Season leaders, awards, and records
 - Explicit unavailable-data notices
 
@@ -534,6 +539,7 @@ Exit when the critical flows pass, secrets remain private, and setup and recover
 | Expected wins | Hand-calculate one scoring period, including a tie if available. |
 | Drafts | Compare one early and one recent complete draft board. |
 | Rosters | Verify the documented final-roster definition for sample seasons. |
+| Trades | Reconcile sampled completed trades and preserve unavailable historical seasons as unavailable. |
 | Player value | Reproduce several classifications from displayed inputs. |
 | Cache | Change a manifest or formula version and rebuild stale results. |
 | Privacy | Find no credentials in Git, shared files, UI output, or logs. |

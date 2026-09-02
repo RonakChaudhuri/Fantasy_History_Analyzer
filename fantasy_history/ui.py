@@ -21,6 +21,7 @@ from fantasy_history.data_access import (
     load_identity_table,
     load_processed_table,
     phase6_source_cache_key,
+    trade_source_cache_key,
 )
 
 SEGMENT_LABELS = {
@@ -153,6 +154,28 @@ def require_phase6_data() -> dict[str, pd.DataFrame] | None:
         st.caption("No ESPN request is made while this page renders.")
         return None
     return load_phase6_ui_bundle(cache_key)
+
+
+@st.cache_data(show_spinner=False)
+def load_trade_ui_bundle(cache_key: str) -> dict[str, pd.DataFrame]:
+    """Load normalized trade inputs without contacting ESPN."""
+    del cache_key
+    return {
+        "trades": load_processed_table("trades"),
+        "trade_items": load_processed_table("trade_items"),
+        "trade_coverage": load_processed_table("trade_coverage"),
+        "players": load_processed_table("players"),
+    }
+
+
+def require_trade_data() -> dict[str, pd.DataFrame] | None:
+    """Render a safe unavailable state when trade inputs have not been imported."""
+    cache_key = trade_source_cache_key()
+    if cache_key is None:
+        st.info("Trade history has not been imported yet. Run the explicit offline import.")
+        st.caption("No ESPN request is made while this page renders.")
+        return None
+    return load_trade_ui_bundle(cache_key)
 
 
 @st.cache_data(show_spinner=False)

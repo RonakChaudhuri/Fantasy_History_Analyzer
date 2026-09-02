@@ -25,7 +25,7 @@ from fantasy_history.validation import (
     validate_section,
 )
 
-IMPORTER_VERSION = "phase2.v1"
+IMPORTER_VERSION = "phase2.v2"
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_RAW_ROOT = PROJECT_ROOT / "data" / "raw"
 DEFAULT_PROCESSED_ROOT = PROJECT_ROOT / "data" / "processed"
@@ -37,6 +37,15 @@ SECTION_VIEWS: dict[str, tuple[str, ...]] = {
     "draft": ("mDraftDetail",),
     "rosters": ("mRoster",),
 }
+
+TRADE_TRANSACTION_TYPES = (
+    "TRADE_ACCEPT",
+    "TRADE_DECLINE",
+    "TRADE_ERROR",
+    "TRADE_PROPOSAL",
+    "TRADE_UPHOLD",
+    "TRADE_VETO",
+)
 
 PRIVATE_MEMBER_KEYS = {
     "email",
@@ -103,6 +112,9 @@ def _section_path(root: Path, section: str) -> Path:
     if section.startswith("lineups_"):
         week = int(section.removeprefix("lineups_"))
         return root / "lineups" / f"week_{week:02d}.json"
+    if section.startswith("transactions_"):
+        week = int(section.removeprefix("transactions_"))
+        return root / "transactions" / f"week_{week:02d}.json"
     names = {"schedule": "matchups.json"}
     return root / names.get(section, f"{section}.json")
 
@@ -121,6 +133,9 @@ def _count_section(section: str, payload: Mapping[str, Any]) -> int:
             roster = team.get("roster") if isinstance(team, dict) else None
             count += len(roster.get("entries", [])) if isinstance(roster, dict) else 0
         return count
+    if section == "transactions":
+        transactions = payload.get("transactions")
+        return len(transactions) if isinstance(transactions, list) else 0
     return 0
 
 
@@ -138,6 +153,9 @@ def _coverage(payloads: Mapping[str, dict[str, Any]], *, active: bool) -> dict[s
     draft = payloads["draft"]
     rosters = payloads["rosters"]
     lineup_payloads = [value for key, value in payloads.items() if key.startswith("lineups_")]
+    transaction_payloads = [
+        value for key, value in payloads.items() if key.startswith("transactions_")
+    ]
     lineup_entries = 0
     for payload in lineup_payloads:
         for matchup in payload.get("schedule", []):
@@ -193,6 +211,16 @@ def _coverage(payloads: Mapping[str, dict[str, Any]], *, active: bool) -> dict[s
             count=lineup_entries,
             partial=active,
         ),
+        "trades": collection_coverage(
+            present=bool(transaction_payloads),
+            count=sum(_count_section("transactions", payload) for payload in transaction_payloads),
+            partial=active and bool(transaction_payloads),
+            detail=(
+                None
+                if transaction_payloads
+                else "ESPN did not expose transaction history for this season."
+            ),
+        ),
     }
 
 
@@ -220,6 +248,29 @@ def fetch_season(client: EspnClient, season: int) -> tuple[dict[str, dict[str, A
             ("mMatchupScore", "mScoreboard"),
             {"scoringPeriodId": period},
         )
+        payloads[section] = validate_section(section, payload, season=season)
+        routes.append(route)
+    transaction_filter = json.dumps(
+        {"transactions": {"filterType": {"value": list(TRADE_TRANSACTION_TYPES)}}},
+        separators=(",", ":"),
+    )
+    status = _dict(payloads["league"].get("status"))
+    final_period = status.get("finalScoringPeriod")
+    transaction_periods = (
+        range(1, int(final_period) + 1)
+        if isinstance(final_period, int) and final_period > 0
+        else schedule_periods
+    )
+    for period in transaction_periods:
+        section = f"transactions_{period}"
+        payload, route = client.fetch(
+            season,
+            ("mTransactions2",),
+            {"scoringPeriodId": period},
+            {"x-fantasy-filter": transaction_filter},
+        )
+        if "transactions" not in payload:
+            continue
         payloads[section] = validate_section(section, payload, season=season)
         routes.append(route)
     return payloads, routes
@@ -252,7 +303,14 @@ def stage_season_snapshot(
         checksums[relative] = _write_json(path, sanitized)
         source_shapes[relative] = sorted(_shape_paths(sanitized))
         row_counts[section] = _count_section(
-            "lineups" if section.startswith("lineups_") else section, sanitized
+            (
+                "lineups"
+                if section.startswith("lineups_")
+                else "transactions"
+                if section.startswith("transactions_")
+                else section
+            ),
+            sanitized,
         )
     status = _dict(sanitized_payloads["league"].get("status"))
     active = season >= fetch_time.year and not bool(status.get("isGameOver", False))
@@ -301,6 +359,8 @@ def load_season_snapshot(path: Path) -> tuple[SnapshotManifest, dict[str, dict[s
         section = (
             f"lineups_{int(source.stem.removeprefix('week_'))}"
             if source.parent.name == "lineups"
+            else f"transactions_{int(source.stem.removeprefix('week_'))}"
+            if source.parent.name == "transactions"
             else ("schedule" if source.name == "matchups.json" else source.stem)
         )
         payloads[section] = validate_section(section, raw, season=manifest.season)
@@ -325,6 +385,8 @@ def validate_frames(frames: Mapping[str, pd.DataFrame]) -> list[str]:
         "away_team_id",
         "source_team_id",
         "opponent_team_id",
+        "from_team_id",
+        "to_team_id",
     }
     for name in (
         "matchups",
@@ -333,6 +395,7 @@ def validate_frames(frames: Mapping[str, pd.DataFrame]) -> list[str]:
         "roster_snapshots",
         "roster_players",
         "player_scores",
+        "trade_items",
     ):
         frame = frames[name]
         candidate_columns = [column for column in frame if column in fantasy_team_columns]

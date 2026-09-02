@@ -68,3 +68,25 @@ def test_temporary_errors_use_bounded_retries() -> None:
     assert route == "current"
     assert calls == 3
     assert sleeps == [0.25, 0.5]
+
+
+def test_view_specific_headers_are_forwarded_without_leaking_into_params() -> None:
+    observed: httpx.Request | None = None
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal observed
+        observed = request
+        return httpx.Response(200, json={"transactions": []})
+
+    client = EspnClient(settings(), client=httpx.Client(transport=httpx.MockTransport(handler)))
+    payload, _ = client.fetch(
+        2025,
+        ("mTransactions2",),
+        {"scoringPeriodId": 1},
+        {"x-fantasy-filter": '{"transactions":{}}'},
+    )
+
+    assert payload == {"transactions": []}
+    assert observed is not None
+    assert observed.headers["x-fantasy-filter"] == '{"transactions":{}}'
+    assert "x-fantasy-filter" not in str(observed.url)

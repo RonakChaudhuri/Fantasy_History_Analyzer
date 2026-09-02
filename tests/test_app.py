@@ -63,6 +63,7 @@ def test_manager_dropdown_changes_profile_and_query_with_one_interaction() -> No
     assert app.selectbox[0].value == str(target["canonical_manager_id"])
     assert app.query_params["manager"] == [str(target["canonical_manager_id"])]
     assert any(item.value == str(target["display_name"]) for item in app.subheader)
+    assert any(item.value == "Trade history" for item in app.subheader)
     assert any("Biggest drafted sleepers and busts" in item.value for item in app.markdown)
 
 
@@ -77,6 +78,7 @@ def test_season_dropdown_changes_page_and_query_with_one_interaction() -> None:
     assert app.selectbox[0].value == target
     assert app.query_params["season"] == [target]
     assert any(item.value == "Best players of the year" for item in app.subheader)
+    assert any(item.label == "Trades" for item in app.tabs)
     leader_tables = [
         item.value
         for item in app.dataframe
